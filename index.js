@@ -138,10 +138,14 @@ function onResize() {
     cvHeight = canvas.height;
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
-    // Reset Keyboard Widths
+    // Reset Keyboard variables
     WHITE_KEY_WIDTH = window.innerWidth / N_WHITE_KEYS;
     BLACK_KEY_WIDTH = WHITE_KEY_WIDTH * 0.58;
-    // Reset keyboard verts
+    WHITE_KEY_HEIGHT = cvHeight * 0.21875;
+    BLACK_KEY_HEIGHT = WHITE_KEY_HEIGHT * 0.618;
+    WHITE_KEY_TEXT_MARGIN_TOP = WHITE_KEY_HEIGHT * 0.28;
+    BLACK_KEY_TEXT_MARGIN_TOP = BLACK_KEY_HEIGHT * 0.32;
+    // Reset keyboard dimensions
     initKeyboard();
 }
 
@@ -277,7 +281,7 @@ function drawKey(r) {
         let x = r.x + BLACK_KEY_WIDTH / 2 - xOffset;
         let y = r.y + BLACK_KEY_TEXT_MARGIN_TOP;
         ctx.fillText(r.text, x, y);
-        y += 30;
+        y += KB_FONT_SIZE * 1.3;
         ctx.fillText("↑", x, y);
     } else {
         ctx.fillStyle = isKeyDown ? WHITE : BLACK;
