@@ -293,7 +293,7 @@ function drawKey(r) {
 
 function drawDebugMessage() {
     ctx.fillStyle = WHITE;
-    ctx.font = "120px helvetica";
+    ctx.font = "80px helvetica";
     ctx.fillText(DEBUG_TEXT, cvWidth / 2 - ctx.measureText(DEBUG_TEXT).width / 2, cvHeight / 2);
 }
 

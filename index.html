@@ -1,87 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Virtual Piano Canvas</title>
-    <script
-      src="https://kit.fontawesome.com/9d82234fc7.js"
-      crossorigin="anonymous"
-    ></script>
-  </head>
-  <body>
-    <div class="canvas-container">
-      <video muted src="res/videos/Unravel.mp4"></video>
-      <canvas id="canvas">Failed to load canvas</canvas>
-      <div class="play-btn playing"></div>
-    </div>
-  </body>
-  <style>
-    html,
-    body,
-    .canvas-container {
-      width: 100%;
-      height: 100%;
-      margin: 0 auto;
-      overflow: hidden;
-      background-color: #111;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-      z-index: 2;
-      position: absolute;
-    }
-    video {
-      z-index: 1;
-      min-width: 100%;
-      min-height: 100%;
-      width: auto;
-      height: auto;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-    .play-btn {
-      z-index: 3;
-      position: absolute;
-      left: 50px;
-      top: 50%;
-      transform: translateY(-50%);
-      border-radius: 50%;
-      border-width: 0;
-      background-image: radial-gradient(
-        circle,
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Virtual Piano Canvas</title>
+  <script src="https://kit.fontawesome.com/9d82234fc7.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div class="canvas-container">
+    <video muted src="res/videos/Unravel.mp4"></video>
+    <canvas id="canvas">Failed to load canvas</canvas>
+    <div class="play-btn playing"></div>
+  </div>
+</body>
+<style>
+  html,
+  body,
+  .canvas-container {
+    width: 100%;
+    height: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    background-color: #111;
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    position: absolute;
+  }
+
+  video {
+    z-index: 1;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .play-btn {
+    z-index: 3;
+    position: absolute;
+    left: 45px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    border-width: 0;
+    background-image: radial-gradient(circle,
         rgb(225, 200, 215) 0%,
-        rgb(255, 245, 250) 100%
-      );
-      box-shadow: 0 0 5px 2px #fff1f1;
-      width: 100px;
-      height: 100px;
-      line-height: 100px;
-      text-align: center;
-      vertical-align: middle;
-      line-height: 100px;
-      user-select: none;
-      font-weight: bold;
-      font-size: 18px;
-      color: #902060;
-    }
-    .play-btn:hover {
-      box-shadow: 0 0 10px 5px #fff1f1;
-      cursor: pointer;
-      text-shadow: 0 0 5px #ffaacc;
-      color: #ce5c93;
-    }
-    .play-btn i {
-      font-size: 35px;
-      position: relative;
-      vertical-align: middle;
-    }
-  </style>
-  <div class="audios"></div>
-  <script src="playlist/unravel.js"></script>
-  <script src="constants.js"></script>
-  <script src="index.js"></script>
+        rgb(255, 245, 250) 100%);
+    box-shadow: 0 0 5px 2px #fff1f1;
+    width: 100px;
+    height: 100px;
+    line-height: 100px;
+    text-align: center;
+    vertical-align: middle;
+    line-height: 100px;
+    user-select: none;
+    font-weight: bold;
+    font-size: 18px;
+    color: #902060;
+  }
+
+  .play-btn:hover {
+    box-shadow: 0 0 10px 5px #fff1f1;
+    cursor: pointer;
+    text-shadow: 0 0 5px #ffaacc;
+    color: #ce5c93;
+  }
+
+  .play-btn i {
+    font-size: 35px;
+    position: relative;
+    vertical-align: middle;
+  }
+</style>
+<div class="audios"></div>
+<script src="playlist/unravel.js"></script>
+<script src="constants.js"></script>
+<script src="index.js"></script>
+
 </html>
