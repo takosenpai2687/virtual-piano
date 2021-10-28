@@ -141,7 +141,7 @@ function onResize() {
     // Reset Keyboard variables
     WHITE_KEY_WIDTH = window.innerWidth / N_WHITE_KEYS;
     BLACK_KEY_WIDTH = WHITE_KEY_WIDTH * 0.58;
-    WHITE_KEY_HEIGHT = cvHeight * 0.21875;
+    WHITE_KEY_HEIGHT = cvHeight * 0.27;
     BLACK_KEY_HEIGHT = WHITE_KEY_HEIGHT * 0.618;
     WHITE_KEY_TEXT_MARGIN_TOP = WHITE_KEY_HEIGHT * 0.28;
     BLACK_KEY_TEXT_MARGIN_TOP = BLACK_KEY_HEIGHT * 0.32;
