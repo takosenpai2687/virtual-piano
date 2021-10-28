@@ -100,7 +100,7 @@ function update() {
                 dt = 5;
             }
             elaspedPlayTime += dt;
-            if (Math.abs(video.currentTime * 1000 - elaspedPlayTime) > 200) {
+            if (video && (Math.abs(video.currentTime * 1000 - elaspedPlayTime) > 200)) {
                 video.currentTime = elaspedPlayTime / 1000.0;
             }
             lastTime = Date.now();
@@ -475,6 +475,7 @@ function playSound(midiKey, vel) {
 function initVideo() {
     // document.querySelector("video").src = VIDEO_URL;
     video = document.querySelector('video');
+    if (!video) return;
     if (!paused) {
         video.play();
     } else {
@@ -566,16 +567,16 @@ function onClickPlayBtn(e) {
         // Unpause and play  
         DEBUG_TEXT = "";
         paused = false;
-        video.play();
-        video.style.display = "block";
+        video && video.play();
+        video && (video.style.display = "block");
         playButton.className = "play-btn playing";
         playButton.innerHTML = `<i class="fas fa-pause"></i>`;
     } else {
         // Pause and stop video 
         DEBUG_TEXT = "← CLICK TO AUTOPLAY";
         paused = true;
-        video.pause();
-        video.style.display = "none";
+        video && video.pause();
+        video && (video.style.display = "none");
         playButton.className = "play-btn paused";
         playButton.innerHTML = `<i class="fas fa-play"></i>`;
     }
