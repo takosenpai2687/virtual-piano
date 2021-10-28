@@ -600,6 +600,9 @@ function bindEvents() {
     canvas.onmousemove = onMouseMove;
     window.onkeydown = onKeyDown;
     window.onkeyup = onKeyUp;
+    window.ontouchstart = onMouseDown;
+    window.ontouchmove = onMouseMove;
+    window.ontouchend = onMouseUp;
     playButton.onclick = throttle(onClickPlayBtn, 200);
 }
 
