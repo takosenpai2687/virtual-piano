@@ -15,7 +15,7 @@ var currentMidiKeys = [];
 var lastTime, startTime;
 var pausedTotal = 0;
 var audioLoaded = false;
-var sustain = false;
+var sustain = true;
 var midifileCopy = [];
 // Rendering info for piano keys
 var keyboardRects = [
@@ -85,9 +85,9 @@ function update() {
     requestAnimationFrame(update);
     clearBackground();
     // Update volumes
-    !sustain && sounds.forEach(s => {
+    sounds.forEach(s => {
         let v = s.volume;
-        v -= VOLUME_DECAY_SPEED;
+        v -= sustain ? 0.15 * VOLUME_DECAY_SPEED : VOLUME_DECAY_SPEED;
         if (v < 0) {
             v = 0;
         }
@@ -578,10 +578,11 @@ function godPlaysMusic(timeElapsedMs) {
         autoPressKey({ key: eKey, shiftKey: isShift, vel });
         // Remove item from midifile
         midifile.shift();
+
         // Settimeout to release key
         setTimeout(() => {
-            autoReleaseKey({ key: eKey })
-        }, durationMs);
+            autoReleaseKey({ key: eKey });
+        }, durationMs - 10);
     }
 }
 
