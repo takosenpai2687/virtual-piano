@@ -1,7 +1,7 @@
 const N_WHITE_KEYS = 36;
 var WHITE_KEY_HEIGHT = 200;
 var BLACK_KEY_HEIGHT = WHITE_KEY_HEIGHT * 0.618;
-const BG_COLOR = "#0000005F";
+const BG_COLOR = "#0000004F";
 const BLACK = "#000";
 const WHITE = "#FFF";
 const KEYDOWN_COLOR = "#F3C320";
