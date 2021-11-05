@@ -433,8 +433,14 @@ function onKeyDown(e) {
     }
 }
 
+
 function onKeyUp(e) {
     if (!e.key) return;
+    // Press space bar to play/pause
+    if (e.key == ' ') {
+        onClickPlayBtn();
+        return;
+    }
     let midiKeyReleased = resolveKeyByEvent({ key: e.key.toLowerCase() });
     if (!midiKeyReleased) return;
     // Release White Key => Reset Volume
@@ -505,6 +511,8 @@ function playSound(midiKey, vel) {
 function initVideo() {
     // document.querySelector("video").src = VIDEO_URL;
     video = document.querySelector('video');
+    video.onpause = () => video.style.display = "none";
+    video.onplay = () => video.style.display = "block";
     if (!video) return;
     if (!paused) {
         video.play();
@@ -598,7 +606,6 @@ function onClickPlayBtn(e) {
         DEBUG_TEXT = "";
         paused = false;
         video && video.play();
-        video && (video.style.display = "block");
         playButton.className = "play-btn playing";
         playButton.innerHTML = `<i class="fas fa-pause"></i>`;
     } else {
@@ -606,7 +613,6 @@ function onClickPlayBtn(e) {
         DEBUG_TEXT = "← CLICK TO AUTOPLAY";
         paused = true;
         video && video.pause();
-        video && (video.style.display = "none");
         playButton.className = "play-btn paused";
         playButton.innerHTML = `<i class="fas fa-play"></i>`;
     }
