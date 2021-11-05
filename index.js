@@ -15,6 +15,8 @@ var currentMidiKeys = [];
 var lastTime, startTime;
 var pausedTotal = 0;
 var audioLoaded = false;
+var sustain = false;
+var midifileCopy = [];
 // Rendering info for piano keys
 var keyboardRects = [
     {   // ! This preview element will be removed
@@ -37,13 +39,13 @@ var video;
 var paused = true;
 var playButton;
 var elaspedPlayTime;
-var midifileCopy = [...midifile];
 
 /**
  * Main init
  */
 async function init() {
     initVariables();
+    preprocessMidifle();
     onResize();
     initKeyboard();
     await initSounds();
@@ -82,6 +84,15 @@ function initVariables() {
 function update() {
     requestAnimationFrame(update);
     clearBackground();
+    // Update volumes
+    !sustain && sounds.forEach(s => {
+        let v = s.volume;
+        v -= VOLUME_DECAY_SPEED;
+        if (v < 0) {
+            v = 0;
+        }
+        s.volume = v;
+    });
     // Draw Bubbles
     drawBubbles();
     if (!paused && bubbles.length == 0) {
@@ -124,6 +135,7 @@ function update() {
     if (DEBUG) {
         drawDebugMessage();
     }
+
 }
 
 /**
@@ -439,6 +451,24 @@ function onKeyUp(e) {
         }
         return cmk != midiKeyReleased;
     });
+}
+
+function preprocessMidifle() {
+    let maxVel = 0, minVel = 127;
+    midifile.forEach((p, i) => {
+        if (p.Vel < minVel) {
+            minVel = p.Vel;
+        }
+        if (p.Vel > maxVel) {
+            maxVel = p.Vel;
+        }
+    });
+    for (let i = 0; i < midifile.length; i++) {
+        let v = midifile[i].Vel;
+        let ratio = (v - minVel) / (maxVel - minVel);
+        midifile[i].Vel = MIN_VEL + ratio * (MAX_VEL - MIN_VEL);
+    }
+    midifileCopy = [...midifile];
 }
 
 async function initSounds() {

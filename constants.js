@@ -1,7 +1,7 @@
 const N_WHITE_KEYS = 36;
 var WHITE_KEY_HEIGHT = 200;
 var BLACK_KEY_HEIGHT = WHITE_KEY_HEIGHT * 0.618;
-const BG_COLOR = "#0000007F";
+const BG_COLOR = "#0000005F";
 const BLACK = "#000";
 const WHITE = "#FFF";
 const KEYDOWN_COLOR = "#F3C320";
@@ -13,6 +13,9 @@ const SHADOW_BLUR = 15;
 const COLOR_WHEEL = ["#ffadad", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff", "#a0c4ff", "#bdb2ff", "#ffc6ff", "#fffffc"];
 const KEYDOWN_SHADOW_COLOR = "#4fB0FF";
 
+const MIN_VEL = 30;
+const MAX_VEL = 127;
+const VOLUME_DECAY_SPEED = 0.035;
 const GOD_MODE = true;
 const DEBUG = true;
 
