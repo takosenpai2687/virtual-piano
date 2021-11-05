@@ -421,6 +421,9 @@ function onMouseUp(e) {
 }
 
 function onKeyDown(e) {
+    if (e && e.key == ' ') {
+        onPlayButtonMouseOver();
+    }
     let midiKey = resolveKeyByEvent(e);
     if (!midiKey) return;
     if (currentMidiKeys.indexOf(midiKey) == -1) {
@@ -439,6 +442,7 @@ function onKeyUp(e) {
     // Press space bar to play/pause
     if (e.key == ' ') {
         onClickPlayBtn();
+        onPlayButtonMouseOut();
         return;
     }
     let midiKeyReleased = resolveKeyByEvent({ key: e.key.toLowerCase() });
@@ -629,6 +633,15 @@ function throttle(callback, delay) {
     }
 }
 
+
+function onPlayButtonMouseOver() {
+    playButton.className = "play-btn hover";
+}
+
+function onPlayButtonMouseOut() {
+    playButton.className = "play-btn";
+}
+
 // Bind events
 function bindEvents() {
     canvas.onmousedown = onMouseDown;
@@ -640,7 +653,10 @@ function bindEvents() {
     window.ontouchmove = onMouseMove;
     window.ontouchend = onMouseUp;
     playButton.onclick = throttle(onClickPlayBtn, 200);
+    playButton.onmouseover = onPlayButtonMouseOver;
+    playButton.onmouseout = onPlayButtonMouseOut;
 }
+
 
 
 window.onload = init;
