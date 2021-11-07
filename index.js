@@ -15,7 +15,7 @@ var currentMidiKeys = [];
 var lastTime, startTime;
 var pausedTotal = 0;
 var audioLoaded = false;
-var sustain = false;
+var sustain = true;
 var midifileCopy = [];
 // Rendering info for piano keys
 var keyboardRects = [
