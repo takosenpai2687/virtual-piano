@@ -505,7 +505,7 @@ function preprocessMidifle() {
         let ratio = (v - minVel) / (maxVel - minVel);
         midifile[i].Vel = MIN_VEL + ratio * (MAX_VEL - MIN_VEL);
     }
-    midifileCopy = [...midifile];
+    midifileCopy = structuredClone(midifile);
 }
 
 function initSounds() {
