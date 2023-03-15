@@ -19,7 +19,8 @@ var sustain = true;
 var midifileCopy = [];
 // Rendering info for piano keys
 var keyboardRects = [
-    {   // ! This preview element will be removed
+    {
+        // ! This preview element will be removed
         index: Number,
         isBlack: Boolean,
         wkIndex: Number | NaN,
@@ -31,7 +32,7 @@ var keyboardRects = [
         fillStyle: String,
         strokeStyle: String,
         lineWidth: Number,
-        text: String
+        text: String,
     },
 ];
 var VIDEO_URL = "res/videos/Unravel.mp4";
@@ -52,7 +53,7 @@ async function init() {
     initBubbles();
     await initVideo();
     bindEvents();
-    update();   // Render Loop
+    update(); // Render Loop
 }
 
 function reset() {
@@ -69,12 +70,14 @@ function initVariables() {
     mousePressedKey = null;
     bubbles = [];
     currentMidiKeys = [];
-    lastTime = undefined, startTime = undefined;
+    (lastTime = undefined), (startTime = undefined);
     pausedTotal = 0;
     keyboardRects = [];
     // Init playbutton
     playButton = document.querySelector("div.play-btn");
-    playButton.innerHTML = paused ? `<i class="fas fa-play"></i>` : `<i class="fas fa-pause"></i>`;
+    playButton.innerHTML = paused
+        ? `<i class="fas fa-play"></i>`
+        : `<i class="fas fa-pause"></i>`;
     elaspedPlayTime = 0;
 }
 
@@ -85,7 +88,7 @@ function update() {
     requestAnimationFrame(update);
     clearBackground();
     // Update volumes
-    sounds.forEach(s => {
+    sounds.forEach((s) => {
         let v = s.volume;
         v -= sustain ? 0.15 * VOLUME_DECAY_SPEED : VOLUME_DECAY_SPEED;
         if (v < 0) {
@@ -111,7 +114,10 @@ function update() {
                 dt = 5;
             }
             elaspedPlayTime += dt;
-            if (video && (Math.abs(video.currentTime * 1000 - elaspedPlayTime) > 200)) {
+            if (
+                video &&
+                Math.abs(video.currentTime * 1000 - elaspedPlayTime) > 200
+            ) {
                 video.currentTime = elaspedPlayTime / 1000.0;
             }
             lastTime = Date.now();
@@ -123,26 +129,23 @@ function update() {
         }
     }
     // Draw White Keys
-    keyboardRects.forEach(r => {
+    keyboardRects.forEach((r) => {
         if (!r.isBlack) drawKey(r);
-
     });
     // Draw Black Keys
-    keyboardRects.forEach(r => {
+    keyboardRects.forEach((r) => {
         if (r.isBlack) drawKey(r);
-    })
+    });
     // ! Draw DEBUG TEXT
     if (DEBUG) {
         drawDebugMessage();
     }
-
 }
 
 /**
  * Reacts to Window Resize Event
  */
 function onResize() {
-
     // Reset Canvas Dimensions
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -188,12 +191,12 @@ function initKeyboard() {
             fillStyle: WHITE,
             strokeStyle: BLACK,
             lineWidth: 1.5,
-            text: null
+            text: null,
         });
     }
     // Add Black Keys
     for (let i = 0; i < 5; i++) {
-        let offsetX = (i * 7 + 1) * WHITE_KEY_WIDTH - BLACK_KEY_WIDTH / 2;  // PosX of C# top-left corner
+        let offsetX = (i * 7 + 1) * WHITE_KEY_WIDTH - BLACK_KEY_WIDTH / 2; // PosX of C# top-left corner
         let bKeysTmp = [];
         for (let j = 0; j < 5; j++) {
             bKeysTmp.push({
@@ -207,15 +210,15 @@ function initKeyboard() {
                 fillStyle: BLACK,
                 strokeStyle: BLACK,
                 lineWidth: 1.0,
-                text: null
-            })
+                text: null,
+            });
         }
-        bKeysTmp[0].x = offsetX;    // C#
-        bKeysTmp[1].x = offsetX + WHITE_KEY_WIDTH;  // D#
-        bKeysTmp[2].x = offsetX + 3 * WHITE_KEY_WIDTH;  // F#
-        bKeysTmp[3].x = offsetX + 4 * WHITE_KEY_WIDTH;  // G#
-        bKeysTmp[4].x = offsetX + 5 * WHITE_KEY_WIDTH;  // A#
-        keyboardRects = [...keyboardRects, ...bKeysTmp];    // Add black keys to da keys
+        bKeysTmp[0].x = offsetX; // C#
+        bKeysTmp[1].x = offsetX + WHITE_KEY_WIDTH; // D#
+        bKeysTmp[2].x = offsetX + 3 * WHITE_KEY_WIDTH; // F#
+        bKeysTmp[3].x = offsetX + 4 * WHITE_KEY_WIDTH; // G#
+        bKeysTmp[4].x = offsetX + 5 * WHITE_KEY_WIDTH; // A#
+        keyboardRects = [...keyboardRects, ...bKeysTmp]; // Add black keys to da keys
     }
     // Sort by x-coord i.e. note
     keyboardRects.sort((a, b) => {
@@ -242,12 +245,12 @@ function removeShadow() {
 
 /**
  * Draw a single piano key
- * @param {keyboardRect} r 
+ * @param {keyboardRect} r
  */
 function drawKey(r) {
     // Check if is keydown
     let isKeyDown = false;
-    currentMidiKeys.forEach(mk => {
+    currentMidiKeys.forEach((mk) => {
         if (mk == r.index + 36) {
             isKeyDown = true;
         }
@@ -306,7 +309,11 @@ function drawKey(r) {
 function drawDebugMessage() {
     ctx.fillStyle = WHITE;
     ctx.font = "80px helvetica";
-    ctx.fillText(DEBUG_TEXT, cvWidth / 2 - ctx.measureText(DEBUG_TEXT).width / 2, cvHeight / 2);
+    ctx.fillText(
+        DEBUG_TEXT,
+        cvWidth / 2 - ctx.measureText(DEBUG_TEXT).width / 2,
+        cvHeight / 2
+    );
 }
 
 function resolveKeyByEvent(e) {
@@ -321,11 +328,13 @@ function resolveKeyByEvent(e) {
         } else if (wkIndex == 35) {
             keysToCheck = [60];
         } else {
-            const realIndex = keyboardRects.findIndex(e => e.wkIndex == wkIndex);
+            const realIndex = keyboardRects.findIndex(
+                (e) => e.wkIndex == wkIndex
+            );
             keysToCheck = [realIndex, realIndex - 1, realIndex + 1];
         }
         let res = undefined;
-        keysToCheck.forEach(k => {
+        keysToCheck.forEach((k) => {
             let within = isWithinRect({ x, y }, keyboardRects[k]);
             if (within) {
                 res = k;
@@ -335,28 +344,38 @@ function resolveKeyByEvent(e) {
     }
     // Keyboard Event
     if (e.x == undefined && e.y == undefined && e.key != undefined) {
-        if (Object.values(noteToKeyboard).indexOf(e.key.toLowerCase()) < 0) return undefined;
+        if (Object.values(noteToKeyboard).indexOf(e.key.toLowerCase()) < 0)
+            return undefined;
         let isShift = e.shiftKey;
-        let rawNote = Object.keys(noteToKeyboard).find(key => noteToKeyboard[key] == e.key.toLowerCase());
+        let rawNote = Object.keys(noteToKeyboard).find(
+            (key) => noteToKeyboard[key] == e.key.toLowerCase()
+        );
         let note = isShift ? `${rawNote}#` : rawNote;
-        let res = Number(Object.keys(midiKeyToNote).find(key => midiKeyToNote[key] == note));
+        let res = Number(
+            Object.keys(midiKeyToNote).find((key) => midiKeyToNote[key] == note)
+        );
         return res;
     }
     return undefined;
 }
 
 function isWithinRect(pos, rect) {
-    return pos.x >= rect.x && pos.x < rect.x + rect.width && pos.y >= rect.y && pos.y < rect.y + rect.height;
+    return (
+        pos.x >= rect.x &&
+        pos.x < rect.x + rect.width &&
+        pos.y >= rect.y &&
+        pos.y < rect.y + rect.height
+    );
 }
 
 function drawRoundRect(ctx, x, y, width, height, radius, fill, stroke) {
-    if (typeof stroke === 'undefined') {
+    if (typeof stroke === "undefined") {
         stroke = true;
     }
-    if (typeof radius === 'undefined') {
+    if (typeof radius === "undefined") {
         radius = 5;
     }
-    if (typeof radius === 'number') {
+    if (typeof radius === "number") {
         radius = { tl: radius, tr: radius, br: radius, bl: radius };
     } else {
         var defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 };
@@ -369,7 +388,12 @@ function drawRoundRect(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.lineTo(x + width - radius.tr, y);
     ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
     ctx.lineTo(x + width, y + height - radius.br);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+    ctx.quadraticCurveTo(
+        x + width,
+        y + height,
+        x + width - radius.br,
+        y + height
+    );
     ctx.lineTo(x + radius.bl, y + height);
     ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
     ctx.lineTo(x, y + radius.tl);
@@ -404,24 +428,24 @@ function onMouseMove(e) {
     let midiKey = resolveKeyByEvent(e);
     if (!midiKey) return;
     // 1. Update mousePressedKey iff HAS mousepressedKey AND  midikey valid
-    if ((mousePressedKey != null) && (midiKey) && (midiKey != mousePressedKey)) {
-        currentMidiKeys = currentMidiKeys.filter(e => e != mousePressedKey);
+    if (mousePressedKey != null && midiKey && midiKey != mousePressedKey) {
+        currentMidiKeys = currentMidiKeys.filter((e) => e != mousePressedKey);
         mousePressedKey = midiKey;
         currentMidiKeys.push(midiKey);
-        currentMidiKeys.forEach(mk => playSound(mk, 127));
+        currentMidiKeys.forEach((mk) => playSound(mk, 127));
     }
 }
 
 function onMouseUp(e) {
     let midiKey = resolveKeyByEvent(e);
     if (mousePressedKey != null) {
-        currentMidiKeys = currentMidiKeys.filter(e => e != mousePressedKey);
+        currentMidiKeys = currentMidiKeys.filter((e) => e != mousePressedKey);
         mousePressedKey = null;
     }
 }
 
 function onKeyDown(e) {
-    if (e && e.key == ' ') {
+    if (e && e.key == " ") {
         onPlayButtonMouseOver();
     }
     let midiKey = resolveKeyByEvent(e);
@@ -436,11 +460,10 @@ function onKeyDown(e) {
     }
 }
 
-
 function onKeyUp(e) {
     if (!e.key) return;
     // Press space bar to play/pause
-    if (e.key == ' ') {
+    if (e.key == " ") {
         onClickPlayBtn();
         onPlayButtonMouseOut();
         return;
@@ -452,10 +475,13 @@ function onKeyUp(e) {
         sounds[midiKeyReleased - 36].volume = 1.0;
     }
     // Release Black Key => Reset Volume
-    if (midiKeyReleased < 60 && currentMidiKeys.indexOf(midiKeyReleased + 1) > -1) {
+    if (
+        midiKeyReleased < 60 &&
+        currentMidiKeys.indexOf(midiKeyReleased + 1) > -1
+    ) {
         sounds[midiKeyReleased + 1 - 36].volume = 1.0;
     }
-    currentMidiKeys = currentMidiKeys.filter(cmk => {
+    currentMidiKeys = currentMidiKeys.filter((cmk) => {
         if (cmk - 36 < 60) {
             return cmk != midiKeyReleased && cmk - 1 != midiKeyReleased;
         }
@@ -464,7 +490,8 @@ function onKeyUp(e) {
 }
 
 function preprocessMidifle() {
-    let maxVel = 0, minVel = 127;
+    let maxVel = 0,
+        minVel = 127;
     midifile.forEach((p, i) => {
         if (p.Vel < minVel) {
             minVel = p.Vel;
@@ -481,25 +508,18 @@ function preprocessMidifle() {
     midifileCopy = [...midifile];
 }
 
-async function initSounds() {
+function initSounds() {
     if (audioLoaded) return;
-    let root = document.querySelector(".audios");
-    root.focus();
     const noteNames = Object.values(midiKeyToNote);
     for (let m = 36; m <= 96; m++) {
-        let audio = document.createElement("audio");
-        audio.id = `audio-${m}`;
+        let audio = new Audio(
+            `res/sounds/${noteNames[m - 36].replace("#", "S")}.mp3`
+        );
         audio.autoplay = false;
         audio.crossOrigin = "anonymous";
-        let source = document.createElement("source");
-        source.type = "audio/mpeg";
-        source.src = `res/sounds/${noteNames[m - 36].replace("#", "S")}.mp3`;
-        audio.appendChild(source);
-        root.appendChild(audio);
         audio.load();
         sounds.push(audio);
     }
-    audioLoaded = true;
 }
 
 function playSound(midiKey, vel) {
@@ -514,9 +534,9 @@ function playSound(midiKey, vel) {
 
 function initVideo() {
     // document.querySelector("video").src = VIDEO_URL;
-    video = document.querySelector('video');
-    video.onpause = () => video.style.display = "none";
-    video.onplay = () => video.style.display = "block";
+    video = document.querySelector("video");
+    video.onpause = () => (video.style.display = "none");
+    video.onplay = () => (video.style.display = "block");
     if (!video) return;
     if (!paused) {
         video.play();
@@ -527,7 +547,7 @@ function initVideo() {
 }
 
 function initBubbles() {
-    midifile = midifile.filter(mdf => mdf.Key >= 36 && mdf.Key <= 96);
+    midifile = midifile.filter((mdf) => mdf.Key >= 36 && mdf.Key <= 96);
     bubbles = [];
     midifile.forEach((midi, i) => {
         const { TimeMs: timeMs, Key: midiKey, DurationMs: durationMs } = midi;
@@ -536,33 +556,49 @@ function initBubbles() {
         let height = durationMs;
         let x = keyboardRect.x + keyboardRect.width / 2 - width / 2;
         let y = -(timeMs + durationMs);
-        bubbles.push({ x, y, width, height, color: COLOR_WHEEL[midiKey % (COLOR_WHEEL.length)], keyboardRectIndex: midiKey - 36 });
+        bubbles.push({
+            x,
+            y,
+            width,
+            height,
+            color: COLOR_WHEEL[midiKey % COLOR_WHEEL.length],
+            keyboardRectIndex: midiKey - 36,
+        });
     });
     bubbles = bubbles.sort((a, b) => b.y - a.y);
     midifile = midifile.sort((a, b) => a.TimeMs - b.TimeMs);
 }
 
 function drawBubbles() {
-    bubbles.forEach(b => {
+    bubbles.forEach((b) => {
         ctx.fillStyle = b.color;
         ctx.shadowColor = ctx.fillStyle;
         ctx.shadowBlur = SHADOW_BLUR;
-        drawRoundRect(ctx, b.x, b.y, b.width, b.height, b.width / 2, true, false);
+        drawRoundRect(
+            ctx,
+            b.x,
+            b.y,
+            b.width,
+            b.height,
+            b.width / 2,
+            true,
+            false
+        );
     });
 }
 
 function updateBubbles(dt) {
-    bubbles.forEach(b => {
+    bubbles.forEach((b) => {
         b.width = WHITE_KEY_WIDTH - BLACK_KEY_WIDTH;
         let keyboardRect = keyboardRects[b.keyboardRectIndex];
         b.x = keyboardRect.x + keyboardRect.width / 2 - b.width / 2;
         b.y += dt;
     });
-    bubbles = bubbles.filter(b => b.y < cvHeight - WHITE_KEY_HEIGHT);
+    bubbles = bubbles.filter((b) => b.y < cvHeight - WHITE_KEY_HEIGHT);
 }
 
 function godPlaysMusic(timeElapsedMs) {
-    if ((timeElapsedMs - midifile[0].TimeMs) > cvHeight - WHITE_KEY_HEIGHT) {
+    if (timeElapsedMs - midifile[0].TimeMs > cvHeight - WHITE_KEY_HEIGHT) {
         // Press key
         let midiKey = midifile[0].Key;
         let durationMs = midifile[0].DurationMs;
@@ -574,7 +610,7 @@ function godPlaysMusic(timeElapsedMs) {
             return;
         }
         let eKey = noteToKeyboard[note.slice(0, 2)];
-        let isShift = (note[2] == "#") || note.length == 3;
+        let isShift = note[2] == "#" || note.length == 3;
         autoPressKey({ key: eKey, shiftKey: isShift, vel });
         // Remove item from midifile
         midifile.shift();
@@ -607,14 +643,14 @@ function onClickPlayBtn(e) {
         if (midifile.length == 0) {
             reset();
         }
-        // Unpause and play  
+        // Unpause and play
         DEBUG_TEXT = "";
         paused = false;
         video && video.play();
         playButton.className = "play-btn playing";
         playButton.innerHTML = `<i class="fas fa-pause"></i>`;
     } else {
-        // Pause and stop video 
+        // Pause and stop video
         DEBUG_TEXT = "← CLICK TO AUTOPLAY";
         paused = true;
         video && video.pause();
@@ -631,9 +667,8 @@ function throttle(callback, delay) {
             prev = now;
             return callback(...args);
         }
-    }
+    };
 }
-
 
 function onPlayButtonMouseOver() {
     playButton.className = "play-btn hover";
@@ -658,10 +693,8 @@ function bindEvents() {
     playButton.onmouseout = onPlayButtonMouseOut;
 }
 
-
-
 window.onload = init;
 window.onresize = onResize;
 window.oncontextmenu = (e) => {
     e.preventDefault();
-}
+};
