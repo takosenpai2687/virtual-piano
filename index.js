@@ -142,7 +142,6 @@ function update() {
  * Reacts to Window Resize Event
  */
 function onResize() {
-
     // Reset Canvas Dimensions
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
