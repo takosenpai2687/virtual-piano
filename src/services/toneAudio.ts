@@ -3,13 +3,37 @@ import * as Tone from 'tone';
 export class ToneAudioService {
   private sampler: Tone.Sampler | null = null;
   private isInitialized = false;
+  private audioContextReady = false;
   private activeNotes: Map<number, { note: string; time: number }> = new Map();
+  private silentOscillator: OscillatorNode | null = null;
 
   constructor() {
     // Keep audio context running even when tab is inactive
-    document.addEventListener('visibilitychange', () => {
-      if (Tone.context.state === 'suspended') {
-        Tone.context.resume();
+    document.addEventListener('visibilitychange', async () => {
+      if (document.hidden) {
+        // Tab is now hidden - start silent oscillator to prevent suspension
+        console.log('Tab hidden - starting silent oscillator to maintain audio');
+        this.startSilentOscillator();
+        if (Tone.context.state !== 'running' && this.audioContextReady) {
+          try {
+            await Tone.context.resume();
+            console.log('Audio context forced to resume in background');
+          } catch (error) {
+            console.warn('Failed to resume audio context:', error);
+          }
+        }
+      } else {
+        // Tab is now visible - stop silent oscillator
+        console.log('Tab visible - stopping silent oscillator');
+        this.stopSilentOscillator();
+        if (Tone.context.state !== 'running' && this.audioContextReady) {
+          try {
+            await Tone.context.resume();
+            console.log('Audio context resumed after tab switch');
+          } catch (error) {
+            console.warn('Failed to resume audio context:', error);
+          }
+        }
       }
     });
   }
@@ -20,6 +44,44 @@ export class ToneAudioService {
     const octave = Math.floor((midi - 12) / 12);
     const noteIndex = (midi - 12) % 12;
     return `${notes[noteIndex]}${octave}`;
+  }
+
+  private startSilentOscillator(): void {
+    if (this.silentOscillator || !this.audioContextReady) return;
+    
+    try {
+      // Create a silent oscillator to keep audio context alive
+      const context = Tone.context.rawContext as AudioContext;
+      this.silentOscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      // Set volume to essentially zero but not completely muted
+      gainNode.gain.setValueAtTime(0.001, context.currentTime);
+      
+      this.silentOscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      // Start the oscillator
+      this.silentOscillator.frequency.setValueAtTime(20, context.currentTime); // Very low frequency
+      this.silentOscillator.start();
+      
+      console.log('Silent oscillator started to maintain audio context');
+    } catch (error) {
+      console.warn('Failed to start silent oscillator:', error);
+    }
+  }
+
+  private stopSilentOscillator(): void {
+    if (this.silentOscillator) {
+      try {
+        this.silentOscillator.stop();
+        this.silentOscillator.disconnect();
+        this.silentOscillator = null;
+        console.log('Silent oscillator stopped');
+      } catch (error) {
+        console.warn('Failed to stop silent oscillator:', error);
+      }
+    }
   }
 
   async init(): Promise<void> {
@@ -59,10 +121,11 @@ export class ToneAudioService {
       // No reverb needed - Salamander samples already have natural room sound
 
       this.isInitialized = true;
-      console.log('Tone.js sampler initialized (audio context will start on first interaction)');
+      console.log('Tone.js sampler initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Tone.js sampler:', error);
-      throw error;
+      // Don't throw - allow app to continue without audio
+      this.isInitialized = false;
     }
   }
 
@@ -80,6 +143,15 @@ export class ToneAudioService {
     if (Tone.context.state === 'suspended') {
       await Tone.context.resume();
     }
+    
+    // Set ready flag if context is running
+    if (Tone.context.state === 'running') {
+      this.audioContextReady = true;
+    }
+  }
+
+  async startAudioContext(): Promise<void> {
+    await this.ensureAudioContextStarted();
   }
 
   playNote(midiNote: number, velocity: number = 127): void {
@@ -88,8 +160,13 @@ export class ToneAudioService {
       return;
     }
 
-    // Start audio context on first interaction
-    this.ensureAudioContextStarted();
+    // Try to resume if context is suspended
+    if (Tone.context.state === 'suspended') {
+      Tone.context.resume().catch(err => 
+        console.warn('Failed to resume suspended context:', err)
+      );
+      return; // Skip this note, will work on next one
+    }
 
     const note = this.midiToNote(midiNote);
     
@@ -139,6 +216,7 @@ export class ToneAudioService {
   }
 
   dispose(): void {
+    this.stopSilentOscillator();
     if (this.sampler) {
       this.sampler.dispose();
       this.sampler = null;

@@ -11,6 +11,8 @@ import {
 } from '@/types/piano';
 import { toneAudio } from './toneAudio';
 
+export { toneAudio };
+
 export class PianoEngine {
   private currentMidiKeys: number[] = [];
   private audioLoaded = false;
@@ -28,9 +30,9 @@ export class PianoEngine {
     try {
       await toneAudio.init();
       this.audioLoaded = true;
-      console.log('Tone.js sampler configured (audio context will start on first play)');
+      console.log('Audio system ready');
     } catch (error) {
-      console.error('Failed to initialize Tone.js audio:', error);
+      console.error('Failed to initialize audio system:', error);
       // Don't throw - allow keyboard to render even if audio fails
       this.audioLoaded = false;
     }

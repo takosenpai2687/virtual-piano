@@ -44,7 +44,6 @@ export const N_WHITE_KEYS = 36;
 export const BG_COLOR = '#0000004a';
 export const BLACK = '#000';
 export const WHITE = '#FFF';
-export const KEYDOWN_COLOR = '#F3C320';
 export const KB_FONT_SIZE = 20;
 export const KB_FONT = `${KB_FONT_SIZE}px Verdana`;
 export const SHADOW_BLUR = 15;
@@ -52,7 +51,6 @@ export const COLOR_WHEEL = [
   '#ffadad', '#ffd6a5', '#fdffb6', '#caffbf',
   '#9bf6ff', '#a0c4ff', '#bdb2ff', '#ffc6ff', '#fffffc'
 ];
-export const KEYDOWN_SHADOW_COLOR = '#4fB0FF';
 export const MIN_VEL = 66;
 export const MAX_VEL = 127;
 export const VOLUME_DECAY_SPEED = 0.035;

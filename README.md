@@ -2,6 +2,8 @@
 
 > **🎮 [▶️ Play Now at tako-piano.netlify.app](https://tako-piano.netlify.app/)**
 
+![Virtual Piano Screenshot](screenshots/1.png)
+
 <!-- Add screenshot here: ![Virtual Piano Screenshot](screenshots/demo.png) -->
 <!-- To add a screenshot: Create a 'screenshots' folder in the root and add your screenshot as 'demo.png' -->
 
