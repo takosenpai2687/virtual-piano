@@ -7,12 +7,11 @@ import {
   midiKeyToNote,
   noteToKeyboard,
   BLACK,
-  WHITE,
-  VOLUME_DECAY_SPEED
+  WHITE
 } from '@/types/piano';
+import { toneAudio } from './toneAudio';
 
 export class PianoEngine {
-  private sounds: HTMLAudioElement[] = [];
   private currentMidiKeys: number[] = [];
   private audioLoaded = false;
   private cvWidth = 0;
@@ -27,37 +26,28 @@ export class PianoEngine {
   async initSounds(): Promise<void> {
     if (this.audioLoaded) return;
     
-    const noteNames = Object.values(midiKeyToNote);
-    for (let m = 36; m <= 96; m++) {
-      const audio = new Audio(`/res/sounds/${noteNames[m - 36].replace('#', 'S')}.mp3`);
-      audio.autoplay = false;
-      audio.crossOrigin = 'anonymous';
-      audio.load();
-      this.sounds.push(audio);
+    try {
+      await toneAudio.init();
+      this.audioLoaded = true;
+      console.log('Tone.js sampler configured (audio context will start on first play)');
+    } catch (error) {
+      console.error('Failed to initialize Tone.js audio:', error);
+      // Don't throw - allow keyboard to render even if audio fails
+      this.audioLoaded = false;
     }
-    this.audioLoaded = true;
   }
 
   playSound(midiKey: number, vel: number): void {
-    const index = midiKey - 36;
-    if (index < 0 || index >= this.sounds.length) return;
-    
-    this.sounds[index].currentTime = 0;
     try {
-      this.sounds[index].volume = vel / 127.0;
-      this.sounds[index].play();
+      toneAudio.playNote(midiKey, vel);
     } catch (err) {
       console.error('Error playing sound:', err);
     }
   }
 
-  updateVolumes(sustain: boolean): void {
-    this.sounds.forEach((s) => {
-      let v = s.volume;
-      v -= sustain ? 0.15 * VOLUME_DECAY_SPEED : VOLUME_DECAY_SPEED;
-      if (v < 0) v = 0;
-      s.volume = v;
-    });
+  updateVolumes(_sustain: boolean): void {
+    // Tone.js handles volume decay naturally through release
+    // This method can be kept for compatibility but doesn't need to do anything
   }
 
   addCurrentKey(midiKey: number): void {
@@ -67,7 +57,13 @@ export class PianoEngine {
   }
 
   removeCurrentKey(midiKey: number): void {
+    const wasPressed = this.currentMidiKeys.includes(midiKey);
     this.currentMidiKeys = this.currentMidiKeys.filter(k => k !== midiKey);
+    
+    // Release the note in Tone.js when key is removed
+    if (wasPressed) {
+      toneAudio.releaseNote(midiKey);
+    }
   }
 
   getCurrentKeys(): number[] {
@@ -75,14 +71,14 @@ export class PianoEngine {
   }
 
   clearCurrentKeys(): void {
+    // Release all currently pressed keys
+    this.currentMidiKeys.forEach(key => toneAudio.releaseNote(key));
     this.currentMidiKeys = [];
   }
 
-  setKeyVolume(midiKey: number, volume: number): void {
-    const index = midiKey - 36;
-    if (index >= 0 && index < this.sounds.length) {
-      this.sounds[index].volume = volume;
-    }
+  setKeyVolume(_midiKey: number, _volume: number): void {
+    // Tone.js handles volume through velocity on note trigger
+    // This method kept for compatibility
   }
 
   preprocessMidiNotes(notes: MidiNote[]): MidiNote[] {

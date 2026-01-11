@@ -19,6 +19,14 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    exclude: ['utils']
+    exclude: ['utils'],
+    // Force exclude utils from dependency scanning
+    entries: ['src/**/*.{ts,tsx,vue}']
+  },
+  // Exclude utils directory from module resolution
+  server: {
+    fs: {
+      deny: ['**/utils/**']
+    }
   }
 })
