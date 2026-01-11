@@ -104,7 +104,7 @@
       <!-- Sheet Selector -->
       <div class="relative group flex items-center gap-2">
         <select v-model="selectedSheetKey" @change="onSheetChange"
-          class="bg-transparent text-gray-200 text-xs sm:text-sm font-medium focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95">
+          class="sheet-selector bg-transparent text-gray-200 text-xs sm:text-sm font-medium focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95 max-w-[150px] sm:max-w-[200px]">
           <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
             {{ getAllSheets()[key]?.name || key }}
           </option>
@@ -1654,6 +1654,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Sheet Selector with Ellipsis */
+.sheet-selector {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-selector option {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Volume Slider Styling */
 .volume-slider {
   background: linear-gradient(to top,
