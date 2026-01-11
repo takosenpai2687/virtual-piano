@@ -2,7 +2,7 @@
   <div class="relative inline-block z-20">
     <button
       @click="showUpload = !showUpload"
-      class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-lg font-semibold transition-all flex items-center"
+      class="px-4 py-2 bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-500 hover:to-red-500 text-white rounded-full shadow-lg font-semibold transition-all flex items-center active:scale-95"
     >
       <i class="fas fa-upload mr-2"></i>
       {{ showUpload ? 'Hide' : 'Upload' }}
@@ -28,7 +28,7 @@
       </div>
 
       <div v-if="converting" class="text-center py-4">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-pink-600 border-t-transparent"></div>
         <p class="text-gray-600 mt-2">Converting MIDI file...</p>
       </div>
 
@@ -41,21 +41,21 @@
         <div class="flex gap-2">
           <button
             @click="downloadJson"
-            class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded font-semibold text-sm transition-all"
+            class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-semibold text-sm transition-all active:scale-95"
           >
             <i class="fas fa-download mr-1"></i>
             JSON
           </button>
           <button
             @click="downloadJs"
-            class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded font-semibold text-sm transition-all"
+            class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full font-semibold text-sm transition-all active:scale-95"
           >
             <i class="fas fa-download mr-1"></i>
             JS
           </button>
           <button
             @click="useConverted"
-            class="flex-1 px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded font-semibold text-sm transition-all"
+            class="flex-1 px-3 py-2 bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-500 hover:to-red-500 text-white rounded-full font-semibold text-sm transition-all active:scale-95"
           >
             <i class="fas fa-play mr-1"></i>
             Play

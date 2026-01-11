@@ -26,56 +26,56 @@
 
     <!-- Dynamic Island Control Panel -->
     <div
-      class="fixed top-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-gray-900/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-700 z-50 text-white transition-all hover:bg-gray-900/95"
-      style="max-width: 90vw;">
+      class="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 bg-gray-900/80 backdrop-blur-xl rounded-full shadow-2xl border border-gray-700 z-50 text-white transition-all hover:bg-gray-900/95"
+      style="max-width: 95vw;">
 
       <!-- Upload -->
       <MidiUploader @notesConverted="onNotesConverted" />
 
-      <div class="w-px h-8 bg-gray-700 mx-1"></div>
+      <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
 
       <!-- Controls -->
       <button @click="seek(-10000)"
-        class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300"
+        class="w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
         title="Rewind 10s">
-        <i class="fas fa-backward"></i>
+        <i class="fas fa-backward text-sm sm:text-base"></i>
       </button>
 
       <button @click="stop"
-        class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-red-400 transition-all text-gray-300"
+        class="w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-red-400 transition-all text-gray-300 active:scale-95"
         title="Stop">
-        <i class="fas fa-stop"></i>
+        <i class="fas fa-stop text-sm sm:text-base"></i>
       </button>
 
       <button @click="togglePlayPause"
-        class="w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 flex items-center justify-center text-white shadow-lg shadow-pink-500/30 transition-all active:scale-95 mx-2">
-        <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-xl"></i>
+        class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-pink-600 to-red-600 hover:from-pink-500 hover:to-red-500 flex items-center justify-center text-white shadow-lg shadow-pink-600/30 transition-all active:scale-95 mx-1 sm:mx-2">
+        <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-lg sm:text-xl"></i>
       </button>
 
       <button @click="seek(10000)"
-        class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300"
+        class="w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
         title="Forward 10s">
-        <i class="fas fa-forward"></i>
+        <i class="fas fa-forward text-sm sm:text-base"></i>
       </button>
 
-      <div class="w-px h-8 bg-gray-700 mx-1"></div>
+      <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
 
       <!-- Speed Control -->
       <button @click="cycleSpeed"
-        class="px-3 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-blue-400 transition-all text-gray-300 font-medium text-sm"
+        class="px-2 sm:px-3 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-blue-400 transition-all text-gray-300 font-medium text-xs sm:text-sm active:scale-95"
         :title="`Playback Speed: ${playbackSpeed}x`">
-        <i class="fas fa-gauge-high mr-1.5"></i>
+        <i class="fas fa-gauge-high mr-1 sm:mr-1.5"></i>
         {{ playbackSpeed }}x
       </button>
 
-      <div class="w-px h-8 bg-gray-700 mx-1"></div>
+      <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
 
       <!-- Volume Control -->
       <div class="relative flex items-center gap-2">
         <button @click="showVolumeSlider = !showVolumeSlider"
-          class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-green-400 transition-all text-gray-300 relative group"
+          class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-green-400 transition-all text-gray-300 relative group active:scale-95"
           :title="`Volume: ${Math.round(volume * 100)}%`">
-          <i :class="['fas', volumeIcon, 'transition-all', volume > 0 ? 'animate-pulse-subtle' : '']"></i>
+          <i :class="['fas', volumeIcon, 'transition-all text-sm sm:text-base', volume > 0 ? 'animate-pulse-subtle' : '']"></i>
         </button>
 
         <!-- Volume Slider Popup -->
@@ -84,11 +84,11 @@
           leave-active-class="transition-all duration-150 ease-in"
           leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-2 scale-95">
           <div v-if="showVolumeSlider"
-            class="absolute top-14 -left-8 bg-gray-800/95 backdrop-blur-xl border border-gray-600 rounded-xl shadow-2xl p-3 z-50">
+            class="absolute top-14 left-1/2 transform -translate-x-1/2 bg-gray-800/95 backdrop-blur-xl border border-gray-600 rounded-xl shadow-2xl p-3 z-50">
             <div class="flex flex-col items-center gap-2 w-12">
               <span class="text-xs text-gray-400 font-medium">{{ Math.round(volume * 100) }}%</span>
               <input type="range" v-model.number="volume" @input="updateVolume" min="0" max="1" step="0.01"
-                class="volume-slider h-32 w-2 appearance-none bg-gray-700 rounded-full cursor-pointer"
+                class="volume-slider h-24 sm:h-32 w-2 appearance-none bg-gray-700 rounded-full cursor-pointer"
                 style="writing-mode: vertical-lr; direction: rtl;" :style="{ '--volume-fill': (volume * 100) + '%' }" />
               <button @click="volume = volume > 0 ? 0 : 0.7; updateVolume()"
                 class="text-xs text-gray-400 hover:text-white transition-colors">
@@ -99,12 +99,12 @@
         </Transition>
       </div>
 
-      <div class="w-px h-8 bg-gray-700 mx-1"></div>
+      <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
 
       <!-- Sheet Selector -->
       <div class="relative group">
         <select v-model="selectedSheetKey" @change="onSheetChange"
-          class="bg-transparent text-gray-200 text-sm font-medium focus:outline-none cursor-pointer py-2 pr-8 pl-2 appearance-none hover:text-white">
+          class="bg-transparent text-gray-200 text-xs sm:text-sm font-medium focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95">
           <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
             {{ sheets[key].name }}
           </option>
@@ -116,27 +116,27 @@
     </div>
 
     <!-- Progress Bar -->
-    <div class="fixed w-full h-6 cursor-pointer z-40 group hover:h-8 transition-all" :style="{ bottom: '28%' }"
+    <div class="fixed w-full h-8 sm:h-6 cursor-pointer z-40 group hover:h-10 sm:hover:h-8 transition-all" :style="{ bottom: '28%' }"
       @click="onProgressBarClick" @mousemove="onProgressBarHover">
       <!-- Track -->
       <div
-        class="absolute top-1/2 left-0 w-full h-1 bg-gray-700/50 group-hover:h-2 transition-all transform -translate-y-1/2 backdrop-blur-sm">
+        class="absolute top-1/2 left-0 w-full h-2 sm:h-1 bg-gray-700/50 group-hover:h-3 sm:group-hover:h-2 transition-all transform -translate-y-1/2 backdrop-blur-sm">
       </div>
 
       <!-- Progress Fill -->
       <div
-        class="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-pink-500 to-purple-500 group-hover:h-2 transition-[height] transform -translate-y-1/2 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+        class="absolute top-1/2 left-0 h-2 sm:h-1 bg-gradient-to-r from-pink-500 to-purple-500 group-hover:h-3 sm:group-hover:h-2 transition-[height] transform -translate-y-1/2 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
         :style="{ width: `${progressPercentage}%` }">
         <!-- Throbber/Handle -->
         <div
-          class="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity scale-150">
+          class="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 w-4 h-4 sm:w-3 sm:h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity scale-150">
         </div>
       </div>
     </div>
 
     <!-- Debug Text -->
     <div v-if="debugText && !isPlaying"
-      class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white/20 text-7xl font-bold z-0 pointer-events-none select-none tracking-widest whitespace-nowrap">
+      class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white/20 text-4xl sm:text-7xl font-bold z-0 pointer-events-none select-none tracking-widest whitespace-nowrap">
       {{ debugText }}
     </div>
   </div>
@@ -536,6 +536,11 @@ const setTime = (timeMs: number) => {
 const onMouseDown = (e: MouseEvent | TouchEvent) => {
   if (!ctx || !canvasRef.value) return;
 
+  // Prevent default touch behavior (scrolling, zooming)
+  if ('touches' in e) {
+    e.preventDefault();
+  }
+
   const rect = canvasRef.value.getBoundingClientRect();
   const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
   const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -562,16 +567,23 @@ const onMouseDown = (e: MouseEvent | TouchEvent) => {
   if (currentKeys.length > 0 && currentKeys.includes(midiKey)) {
     engine.playSound(midiKey, 127);
     mousePressedKey = midiKey;
+    triggerManualPlayEffects(midiKey); // Add effects
     return;
   }
 
   engine.addCurrentKey(midiKey);
   mousePressedKey = midiKey;
   engine.playSound(midiKey, 127);
+  triggerManualPlayEffects(midiKey); // Add effects
 };
 
 const onMouseMove = (e: MouseEvent | TouchEvent) => {
   if (!isMouseDown || !canvasRef.value) return;
+
+  // Prevent default touch behavior (scrolling)
+  if ('touches' in e) {
+    e.preventDefault();
+  }
 
   const rect = canvasRef.value.getBoundingClientRect();
   const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -598,6 +610,7 @@ const onMouseMove = (e: MouseEvent | TouchEvent) => {
     mousePressedKey = midiKey;
     engine.addCurrentKey(midiKey);
     engine.getCurrentKeys().forEach(mk => engine.playSound(mk, 127));
+    triggerManualPlayEffects(midiKey); // Add effects
   }
 };
 
@@ -624,6 +637,7 @@ const onKeyDown = (e: KeyboardEvent) => {
   if (!engine.getCurrentKeys().includes(midiKey)) {
     engine.addCurrentKey(midiKey);
     engine.playSound(midiKey, 127);
+    triggerManualPlayEffects(midiKey); // Add effects
   }
 };
 
@@ -764,8 +778,34 @@ const createBackgroundWave = (x: number, y: number, color: string) => {
   });
 };
 
+const triggerManualPlayEffects = (midiKey: number) => {
+  const keyIndex = midiKey - 36;
+  const keyRect = keyboardRects[keyIndex];
+  if (!keyRect) return;
+
+  const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
+  const whiteKeyWidth = keyboardRects[0]?.width || 0;
+  const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
+  const bubbleWidth = whiteKeyWidth - blackKeyWidth;
+  const x = keyRect.x + keyRect.width / 2;
+  const y = pianoY.value;
+
+  // Create smoke particles
+  if (Math.random() > 0.5) {
+    createSmokeParticles(x, y, color);
+  }
+
+  // Create electric sparks
+  if (Math.random() > 0.4) {
+    createElectricSparks(x, y, color, bubbleWidth);
+  }
+
+  // Add key glow effect
+  keyGlowEffects.set(keyIndex, { intensity: 1, color: color, time: 0 });
+};
+
 const initFloatingParticles = () => {
-  const count = 15;
+  const count = 18; // Increased from 15 (20% more)
   floatingParticles = [];
   for (let i = 0; i < count; i++) {
     floatingParticles.push({

@@ -6,6 +6,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
 }
 
 html,
@@ -14,9 +15,20 @@ body {
   height: 100%;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  /* Prevent overscroll bounce on mobile */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  /* Prevent pull-to-refresh */
+  touch-action: none;
 }
 
 #app {
   width: 100%;
   height: 100%;
+  /* Prevent text selection on mobile */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Hardware acceleration */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
