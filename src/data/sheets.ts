@@ -85,5 +85,11 @@ export const reloadSheets = () => {
   sheets = getAllSheets();
 };
 
-export const getSheetNames = (): string[] => Object.keys(sheets);
+export const getSheetNames = (): string[] => {
+  return Object.keys(sheets).sort((a, b) => {
+    const nameA = sheets[a]?.name || a;
+    const nameB = sheets[b]?.name || b;
+    return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+  });
+};
 export const getSheet = (key: string): PianoSheet | undefined => sheets[key];
