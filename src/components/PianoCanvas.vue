@@ -131,6 +131,32 @@
           <i class="fas fa-trash text-sm"></i>
         </button>
       </div>
+
+      <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
+
+      <!-- Play Mode Control -->
+      <button @click="cyclePlayMode"
+        class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-purple-400 transition-all text-gray-300 active:scale-95 relative group"
+        :title="playModeTitle">
+        <!-- FontAwesome Icon -->
+        <i v-if="playModeIcon.type === 'fa'" :class="['fas', playModeIcon.icon, 'text-sm sm:text-base transition-all duration-300']" 
+           :style="{ animation: 'playModeIconPulse 2s ease-in-out infinite' }"></i>
+        <!-- Custom SVG Icon for Single Loop -->
+        <svg v-else-if="playModeIcon.type === 'svg' && playModeIcon.icon === 'single-loop'" 
+             class="w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300"
+             :style="{ animation: 'playModeIconPulse 2s ease-in-out infinite' }"
+             viewBox="0 0 24 24" 
+             fill="none" 
+             stroke="currentColor" 
+             stroke-width="2" 
+             stroke-linecap="round" 
+             stroke-linejoin="round">
+          <!-- Circular arrow path -->
+          <path d="M21 12a9 9 0 1 1-2.636-6.364L21 8.25V2.25h-6l2.879 2.879"></path>
+          <!-- Number 1 in center -->
+          <text x="12" y="16" text-anchor="middle" fill="currentColor" font-size="10" font-weight="bold" stroke="none">1</text>
+        </svg>
+      </button>
     </div>
 
     <!-- Progress Bar -->
@@ -379,6 +405,18 @@
     transform: rotate(-90deg) scale(1.1);
   }
 }
+
+/* Play Mode Icon Animation */
+@keyframes playModeIconPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
 </style>
 
 <script setup lang="ts">
@@ -429,6 +467,7 @@ const totalDuration = ref(1000); // Total song duration in ms
 const playbackSpeed = ref(1); // Speed multiplier
 const volume = ref(0.9); // Volume level 0-1
 const showVolumeSlider = ref(false); // Toggle volume slider visibility
+const playMode = ref<'single' | 'list' | 'random'>('single'); // Play mode: 单曲循环/列表循环/随机
 const canvasWidth = ref(window.innerWidth);
 const canvasHeight = ref(window.innerHeight);
 const pianoY = ref(0);
@@ -473,6 +512,24 @@ const selectWidth = computed(() => {
   // Calculate total width with min and max constraints
   const calculatedWidth = textWidth + padding;
   return Math.max(80, Math.min(300, calculatedWidth));
+});
+
+const playModeIcon = computed(() => {
+  switch (playMode.value) {
+    case 'single': return { type: 'svg', icon: 'single-loop' }; // 单曲循环 (custom SVG)
+    case 'list': return { type: 'fa', icon: 'fa-sync-alt' }; // 列表循环 (circular sync)
+    case 'random': return { type: 'fa', icon: 'fa-random' }; // 随机 (shuffle icon)
+    default: return { type: 'svg', icon: 'single-loop' };
+  }
+});
+
+const playModeTitle = computed(() => {
+  switch (playMode.value) {
+    case 'single': return '单曲循环 (Single Loop)';
+    case 'list': return '列表循环 (List Loop)';
+    case 'random': return '随机 (Random)';
+    default: return '单曲循环';
+  }
 });
 
 const isMobile = computed(() => {
@@ -691,6 +748,62 @@ const cycleSpeed = () => {
   const currentIndex = speeds.indexOf(playbackSpeed.value);
   const nextIndex = (currentIndex + 1) % speeds.length;
   playbackSpeed.value = speeds[nextIndex];
+};
+
+const cyclePlayMode = () => {
+  const modes: Array<'single' | 'list' | 'random'> = ['single', 'list', 'random'];
+  const currentIndex = modes.indexOf(playMode.value);
+  const nextIndex = (currentIndex + 1) % modes.length;
+  playMode.value = modes[nextIndex];
+  // Save play mode to localStorage
+  localStorage.setItem('playMode', playMode.value);
+};
+
+const getNextSheetKey = (): string | null => {
+  const allKeys = sheetKeys.value;
+  if (allKeys.length === 0) return null;
+  
+  const currentIndex = allKeys.indexOf(selectedSheetKey.value);
+  
+  if (playMode.value === 'single') {
+    // Single loop: return same song
+    return selectedSheetKey.value;
+  } else if (playMode.value === 'list') {
+    // List loop: go to next song, wrap around to first
+    const nextIndex = (currentIndex + 1) % allKeys.length;
+    return allKeys[nextIndex];
+  } else if (playMode.value === 'random') {
+    // Random: pick a random song (avoid current if possible)
+    if (allKeys.length === 1) return allKeys[0];
+    let randomIndex;
+    do {
+      randomIndex = Math.floor(Math.random() * allKeys.length);
+    } while (randomIndex === currentIndex && allKeys.length > 1);
+    return allKeys[randomIndex];
+  }
+  
+  return null;
+};
+
+const playNextSong = () => {
+  const nextKey = getNextSheetKey();
+  if (!nextKey) return;
+  
+  if (nextKey === selectedSheetKey.value) {
+    // Same song, just restart
+    playbackTime.value = 0;
+    play();
+  } else {
+    // Switch to next song
+    selectedSheetKey.value = nextKey;
+    localStorage.setItem('selectedSheetKey', nextKey);
+    customSheet.value = null;
+    reset();
+    // Auto-play the next song
+    setTimeout(() => {
+      play();
+    }, 100);
+  }
 };
 
 const updateVolume = () => {
@@ -1726,6 +1839,8 @@ const update = () => {
     if (playbackTime.value >= totalDuration.value) {
       pause();
       playbackTime.value = totalDuration.value;
+      // Auto-play next song according to play mode
+      playNextSong();
     }
   } else {
     lastFrameTime = 0;
@@ -1909,6 +2024,16 @@ onMounted(async () => {
 
   // Initialize volume
   updateVolume();
+
+  // Load saved play mode from localStorage
+  try {
+    const savedPlayMode = localStorage.getItem('playMode');
+    if (savedPlayMode && ['single', 'list', 'random'].includes(savedPlayMode)) {
+      playMode.value = savedPlayMode as 'single' | 'list' | 'random';
+    }
+  } catch (err) {
+    console.error('Failed to load saved play mode:', err);
+  }
 
   onResize();
   loadSavedSelection();
