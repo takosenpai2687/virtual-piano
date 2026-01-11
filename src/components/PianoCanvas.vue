@@ -103,6 +103,11 @@
 
       <!-- Sheet Selector -->
       <div class="relative group flex items-center gap-2">
+        <!-- Animated Music Icon -->
+        <div class="music-icon-container flex items-center justify-center" title="Select a song">
+          <i class="fas fa-music text-pink-400 text-sm sm:text-base music-icon-animated"></i>
+        </div>
+        
         <select ref="selectRef" v-model="selectedSheetKey" @change="onSheetChange"
           class="sheet-selector bg-transparent text-gray-200 text-xs sm:text-sm font-bold focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95 max-w-[300px]"
           :style="{ width: selectWidth + 'px' }">
@@ -1882,6 +1887,13 @@ const animateWaves = () => {
   drawWave();
 };
 
+const handleVisibilityChange = () => {
+  // Pause playback when tab/window loses focus
+  if (document.hidden && isPlaying.value) {
+    pause();
+  }
+};
+
 onMounted(async () => {
   if (!canvasRef.value) return;
 
@@ -1909,6 +1921,7 @@ onMounted(async () => {
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('click', handleOutsideClick);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   update();
 });
@@ -1938,6 +1951,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKeyDown);
   window.removeEventListener('keyup', onKeyUp);
   window.removeEventListener('click', handleOutsideClick);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 
@@ -2038,5 +2052,46 @@ onUnmounted(() => {
   height: 60px;
   z-index: 5555;
   pointer-events: none;
+}
+
+/* Animated Music Icon */
+.music-icon-container {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+@keyframes music-bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-3px) scale(1.1);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+  }
+  75% {
+    transform: translateY(-2px) scale(1.05);
+  }
+}
+
+@keyframes music-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 3px rgba(236, 72, 153, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(236, 72, 153, 0.9)) drop-shadow(0 0 12px rgba(236, 72, 153, 0.5));
+  }
+}
+
+.music-icon-animated {
+  animation: music-bounce 1.5s ease-in-out infinite, music-glow 2s ease-in-out infinite;
+  display: inline-block;
+}
+
+.music-icon-container:hover .music-icon-animated {
+  animation: music-bounce 0.8s ease-in-out infinite, music-glow 1s ease-in-out infinite;
+  color: #f472b6;
 }
 </style>
