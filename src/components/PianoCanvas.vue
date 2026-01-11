@@ -35,16 +35,16 @@
       <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
 
       <!-- Controls -->
-      <button @click="seek(-10000)"
-        class="w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
-        title="Rewind 10s">
-        <i class="fas fa-backward text-sm sm:text-base"></i>
-      </button>
-
       <button @click="stop"
         class="w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-red-400 transition-all text-gray-300 active:scale-95"
         title="Stop">
         <i class="fas fa-stop text-sm sm:text-base"></i>
+      </button>
+
+      <button @click="seek(-10000)"
+        class="w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
+        title="Rewind 10s">
+        <i class="fas fa-backward text-sm sm:text-base"></i>
       </button>
 
       <button @click="togglePlayPause"
