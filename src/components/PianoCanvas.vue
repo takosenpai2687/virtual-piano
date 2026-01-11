@@ -337,6 +337,10 @@ const volumeIcon = computed(() => {
   return 'fa-volume-up';
 });
 
+const isMobile = computed(() => {
+  return canvasWidth.value < 768; // Hide keyboard text on screens smaller than 768px
+});
+
 let ctx: CanvasRenderingContext2D | null = null;
 let engine: PianoEngine;
 let keyboardRects: KeyboardRect[] = [];
@@ -1088,21 +1092,24 @@ const drawKey = (r: KeyboardRect) => {
 
   removeShadow();
 
-  ctx.font = KB_FONT;
-  const xOffset = ctx.measureText(r.text || '').width / 2;
+  // Skip rendering keyboard text on mobile devices
+  if (!isMobile.value) {
+    ctx.font = KB_FONT;
+    const xOffset = ctx.measureText(r.text || '').width / 2;
 
-  if (r.isBlack) {
-    ctx.fillStyle = WHITE;
-    const x = r.x + r.width / 2 - xOffset;
-    let y = r.y + r.height * 0.32;
-    ctx.fillText(r.text || '', x, y);
-    y += KB_FONT_SIZE * 1.3;
-    ctx.fillText('↑', x, y);
-  } else {
-    ctx.fillStyle = isKeyDown ? WHITE : BLACK;
-    const x = r.x + r.width / 2 - xOffset;
-    const y = r.y + r.height * 0.28;
-    ctx.fillText(r.text || '', x, y);
+    if (r.isBlack) {
+      ctx.fillStyle = WHITE;
+      const x = r.x + r.width / 2 - xOffset;
+      let y = r.y + r.height * 0.32;
+      ctx.fillText(r.text || '', x, y);
+      y += KB_FONT_SIZE * 1.3;
+      ctx.fillText('↑', x, y);
+    } else {
+      ctx.fillStyle = isKeyDown ? WHITE : BLACK;
+      const x = r.x + r.width / 2 - xOffset;
+      const y = r.y + r.height * 0.28;
+      ctx.fillText(r.text || '', x, y);
+    }
   }
 };
 
