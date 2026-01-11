@@ -80,7 +80,7 @@
         
         <!-- Progress Fill -->
         <div 
-          class="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-pink-500 to-purple-500 group-hover:h-2 transition-all transform -translate-y-1/2 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+          class="absolute top-1/2 left-0 h-1 bg-gradient-to-r from-pink-500 to-purple-500 group-hover:h-2 transition-[height] transform -translate-y-1/2 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
           :style="{ width: `${progressPercentage}%` }"
         >
             <!-- Throbber/Handle -->
@@ -160,6 +160,21 @@ let smokeParticles: Array<{
   color: string;
   alpha: number;
 }> = [];
+
+let sparkParticles: Array<{
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+  alpha: number;
+  brightness: number;
+}> = [];
+
+let keyGlowEffects: Map<number, { intensity: number; color: string; time: number }> = new Map();
 
 const onSheetChange = () => {
   customSheet.value = null;
@@ -268,9 +283,10 @@ const setTime = (timeMs: number) => {
   activeNoteTimeouts.forEach(timeout => clearTimeout(timeout));
   activeNoteTimeouts.clear();
   
-  // Update playback time
+  // Update playback time immediately
   playbackTime.value = timeMs;
-  lastFrameTime = performance.now();
+  // Reset frame time so next frame starts fresh
+  lastFrameTime = 0;
 };
 
 const onMouseDown = (e: MouseEvent | TouchEvent) => {
@@ -457,11 +473,23 @@ const calculateBubbles = (): Bubble[] => {
     // Skip bubbles that have already passed the piano line
     if (y > pianoY) continue;
     
-    // Check if bubble is touching the keyboard and create smoke effect
-    if (bottomY >= pianoY - 5 && bottomY <= pianoY + 5 && Math.random() > 0.7) {
+    // Check if bubble is touching the keyboard and create effects
+    if (bottomY >= pianoY - 5 && bottomY <= pianoY + 5) {
       const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
       const x = keyRect.x + keyRect.width / 2 - bubbleWidth / 2;
-      createSmokeParticles(x + bubbleWidth / 2, pianoY, color);
+      
+      // Create smoke particles occasionally
+      if (Math.random() > 0.7) {
+        createSmokeParticles(x + bubbleWidth / 2, pianoY, color);
+      }
+      
+      // Create electric sparks when hitting
+      if (Math.random() > 0.6) {
+        createElectricSparks(x + bubbleWidth / 2, pianoY, color, bubbleWidth);
+      }
+      
+      // Add key glow effect
+      keyGlowEffects.set(keyIndex, { intensity: 1, color: color, time: 0 });
     }
     
     // Position bubble centered on key
@@ -498,6 +526,27 @@ const createSmokeParticles = (x: number, y: number, color: string) => {
   }
 };
 
+const createElectricSparks = (x: number, y: number, color: string, width: number) => {
+  // Create 8-12 electric spark particles
+  const count = Math.floor(Math.random() * 5) + 8;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.random() * Math.PI) - Math.PI / 2; // Upward hemisphere
+    const speed = Math.random() * 1.5 + 0.5;
+    sparkParticles.push({
+      x: x + (Math.random() - 0.5) * width,
+      y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0,
+      maxLife: Math.random() * 200 + 150,
+      size: Math.random() * 3 + 2,
+      color: color,
+      alpha: 1,
+      brightness: Math.random() * 0.5 + 0.5
+    });
+  }
+};
+
 const updateSmokeParticles = (dt: number) => {
   smokeParticles = smokeParticles.filter(p => {
     p.life += dt;
@@ -507,6 +556,28 @@ const updateSmokeParticles = (dt: number) => {
     p.alpha = Math.max(0, 0.6 * (1 - p.life / p.maxLife));
     p.size += 0.02 * dt; // grow slightly
     return p.life < p.maxLife;
+  });
+};
+
+const updateSparkParticles = (dt: number) => {
+  sparkParticles = sparkParticles.filter(p => {
+    p.life += dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 0.003 * dt; // gravity
+    p.vx *= 0.98; // air resistance
+    p.alpha = Math.max(0, 1 - (p.life / p.maxLife));
+    return p.life < p.maxLife;
+  });
+};
+
+const updateKeyGlowEffects = (dt: number) => {
+  keyGlowEffects.forEach((effect, key) => {
+    effect.time += dt;
+    effect.intensity = Math.max(0, 1 - (effect.time / 300)); // Fade over 300ms
+    if (effect.intensity <= 0) {
+      keyGlowEffects.delete(key);
+    }
   });
 };
 
@@ -526,10 +597,37 @@ const drawSmokeParticles = () => {
   });
 };
 
+const drawSparkParticles = () => {
+  if (!ctx) return;
+  
+  sparkParticles.forEach(p => {
+    ctx!.save();
+    ctx!.globalAlpha = p.alpha;
+    
+    // Draw bright core
+    ctx!.fillStyle = '#ffffff';
+    ctx!.shadowColor = p.color;
+    ctx!.shadowBlur = 20 * p.brightness;
+    ctx!.beginPath();
+    ctx!.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
+    ctx!.fill();
+    
+    // Draw colored glow
+    ctx!.fillStyle = p.color;
+    ctx!.shadowBlur = 15 * p.brightness;
+    ctx!.beginPath();
+    ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx!.fill();
+    
+    ctx!.restore();
+  });
+};
+
 const drawKey = (r: KeyboardRect) => {
   if (!ctx) return;
   
   const isKeyDown = engine.getCurrentKeys().includes(r.index + 36);
+  const glowEffect = keyGlowEffects.get(r.index);
   
   if (isKeyDown) {
     ctx.fillStyle = KEYDOWN_COLOR;
@@ -537,6 +635,13 @@ const drawKey = (r: KeyboardRect) => {
     ctx.shadowBlur = SHADOW_BLUR * 6;
     ctx.strokeStyle = KEYDOWN_COLOR;
     ctx.shadowOffsetY = -80;
+  } else if (glowEffect && glowEffect.intensity > 0) {
+    // Apply glow effect from bubble hit
+    ctx.fillStyle = r.fillStyle;
+    ctx.strokeStyle = glowEffect.color;
+    ctx.shadowColor = glowEffect.color;
+    ctx.shadowBlur = SHADOW_BLUR * 4 * glowEffect.intensity;
+    ctx.lineWidth = r.lineWidth + 2 * glowEffect.intensity;
   } else {
     ctx.fillStyle = r.fillStyle;
     ctx.strokeStyle = r.strokeStyle;
@@ -690,8 +795,10 @@ const update = () => {
     const deltaMs = (currentTime - lastFrameTime) * playbackSpeed.value;
     lastFrameTime = currentTime;
     
-    // Update smoke particles
+    // Update all particle effects
     updateSmokeParticles(deltaMs);
+    updateSparkParticles(deltaMs);
+    updateKeyGlowEffects(deltaMs);
     
     // Update playback time
     const previousTime = playbackTime.value;
@@ -707,12 +814,15 @@ const update = () => {
     }
   } else {
     lastFrameTime = 0;
-    // Still update smoke particles even when paused
+    // Still update particles even when paused
     updateSmokeParticles(16);
+    updateSparkParticles(16);
+    updateKeyGlowEffects(16);
   }
   
-  // Draw smoke particles on top
+  // Draw all particles on top
   drawSmokeParticles();
+  drawSparkParticles();
   
   keyboardRects.forEach(r => {
     if (!r.isBlack) drawKey(r);
