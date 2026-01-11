@@ -424,6 +424,12 @@ const showRotatePrompt = computed(() => {
   return isMobile.value && canvasHeight.value > canvasWidth.value;
 });
 
+const shouldThinBubbles = computed(() => {
+  // Only thin bubbles on very narrow screens or mobile in portrait
+  // In landscape mode on mobile, use normal bubble width
+  return canvasWidth.value < 768 || (isMobile.value && canvasHeight.value > canvasWidth.value);
+});
+
 let ctx: CanvasRenderingContext2D | null = null;
 let engine: PianoEngine;
 let keyboardRects: KeyboardRect[] = [];
@@ -792,8 +798,8 @@ const calculateBubbles = (): Bubble[] => {
   const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
   let bubbleWidth = whiteKeyWidth - blackKeyWidth;
   
-  // Make bubbles 50% thinner on mobile
-  if (isMobile.value) {
+  // Make bubbles 50% thinner on narrow screens or mobile portrait
+  if (shouldThinBubbles.value) {
     bubbleWidth *= 0.5;
   }
 
@@ -880,8 +886,8 @@ const triggerManualPlayEffects = (midiKey: number) => {
   const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
   let bubbleWidth = whiteKeyWidth - blackKeyWidth;
   
-  // Make bubbles 50% thinner on mobile
-  if (isMobile.value) {
+  // Make bubbles 50% thinner on narrow screens or mobile portrait
+  if (shouldThinBubbles.value) {
     bubbleWidth *= 0.5;
   }
   
@@ -1388,6 +1394,12 @@ const onResize = () => {
     waveCanvasRef.value.height = 60;
     // Position wave at keyboard top edge
     waveCanvasRef.value.style.top = `${window.innerHeight * 0.73 - 30}px`;
+    
+    // Restart wave animation to adapt to new dimensions
+    if (waveAnimationId) {
+      cancelAnimationFrame(waveAnimationId);
+    }
+    animateWaves();
   }
 
   // Bubbles will be recalculated automatically in the next frame
