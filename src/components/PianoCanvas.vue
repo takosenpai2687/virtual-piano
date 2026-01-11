@@ -388,7 +388,8 @@ import {
   KB_FONT,
   KB_FONT_SIZE,
   SHADOW_BLUR,
-  COLOR_WHEEL
+  COLOR_WHEEL,
+  midiKeyToNote
 } from '@/types/piano';
 
 // ========================================
@@ -444,20 +445,22 @@ const volumeIcon = computed(() => {
 });
 
 const isMobile = computed(() => {
-  // Check if device has touch capability and is a mobile/tablet device
-  const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  
-  // Check if the smaller dimension (portrait or landscape) is less than 768px
-  // This ensures we detect mobile in both orientations
-  const minDimension = Math.min(canvasWidth.value, canvasHeight.value);
-  const isMobileSize = minDimension < 768;
-  
-  // Also check user agent for mobile indicators
+  // Check user agent for mobile indicators
   const userAgent = navigator.userAgent.toLowerCase();
   const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
   
-  // Device is mobile if it has a mobile user agent OR (has touch and small screen)
-  return isMobileUserAgent || (hasTouchScreen && isMobileSize);
+  // Check if the smaller dimension (portrait or landscape) is less than 768px
+  const minDimension = Math.min(canvasWidth.value, canvasHeight.value);
+  const isMobileSize = minDimension < 768;
+  
+  // If screen is large (>=1024px in smallest dimension), always treat as desktop
+  // This ensures large touchscreen PCs and dev tools testing work correctly
+  if (minDimension >= 1024) {
+    return false;
+  }
+  
+  // Device is mobile if it has a mobile user agent OR small screen size
+  return isMobileUserAgent || isMobileSize;
 });
 
 const showRotatePrompt = computed(() => {
@@ -1485,6 +1488,20 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
       const x = adjustedRect.x + adjustedRect.width / 2 - xOffset;
       const y = adjustedRect.y + adjustedRect.height * 0.28;
       ctx.fillText(r.text || '', x, y);
+      
+      // Draw note name (A-G) at the bottom of white keys
+      const midiKey = r.index + 36;
+      const fullNote = midiKeyToNote[midiKey] || '';
+      const noteLetter = fullNote.replace(/[0-9#]/g, ''); // Extract just the letter (A-G)
+      
+      if (noteLetter) {
+        ctx.font = `bold ${KB_FONT_SIZE + 2}px Verdana`;
+        ctx.fillStyle = isKeyDown ? WHITE : '#855';
+        const noteXOffset = ctx.measureText(noteLetter).width / 2;
+        const noteX = adjustedRect.x + adjustedRect.width / 2 - noteXOffset;
+        const noteY = adjustedRect.y + adjustedRect.height * 0.95;
+        ctx.fillText(noteLetter, noteX, noteY);
+      }
     }
   }
 };
