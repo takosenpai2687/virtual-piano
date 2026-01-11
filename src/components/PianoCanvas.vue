@@ -669,7 +669,8 @@ const stop = () => {
 const initSheet = () => {
   if (!currentSheet.value) return;
 
-  midiNotes = engine.preprocessMidiNotes([...currentSheet.value.notes]);
+  // Use original MIDI velocities without normalization
+  midiNotes = [...currentSheet.value.notes];
   // Sort notes by time
   midiNotes.sort((a, b) => a.TimeMs - b.TimeMs);
 
