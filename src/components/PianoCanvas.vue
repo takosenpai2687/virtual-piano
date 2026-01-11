@@ -145,6 +145,26 @@
       class="github-link fixed top-4 right-4 w-12 h-12 flex items-center justify-center rounded-full bg-gray-900/60 backdrop-blur-md border border-gray-700 text-gray-300 hover:text-white transition-all z-50 group">
       <i class="fab fa-github text-xl"></i>
     </a>
+
+    <!-- Rotate Phone Prompt (Portrait Mode on Mobile) -->
+    <Transition
+      enter-active-class="transition-all duration-500 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition-all duration-300 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95">
+      <div v-if="showRotatePrompt" class="fixed inset-0 bg-black/90 backdrop-blur-lg z-[100] flex items-center justify-center">
+        <div class="text-center px-8">
+          <div class="rotate-phone-icon mb-8">
+            <i class="fas fa-mobile-screen text-6xl text-white"></i>
+          </div>
+          <h2 class="text-3xl font-bold text-white mb-4">Rotate Your Device</h2>
+          <p class="text-lg text-gray-300 mb-2">Please rotate your phone to landscape mode</p>
+          <p class="text-sm text-gray-400">for the best piano experience</p>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -294,6 +314,26 @@
 .github-link:active {
   transform: scale(0.95);
 }
+
+/* Rotate Phone Prompt Animation */
+.rotate-phone-icon {
+  animation: rotatePhone 2s ease-in-out infinite;
+}
+
+@keyframes rotatePhone {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-90deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(-90deg);
+  }
+  75% {
+    transform: rotate(-90deg) scale(1.1);
+  }
+}
 </style>
 
 <script setup lang="ts">
@@ -363,7 +403,25 @@ const volumeIcon = computed(() => {
 });
 
 const isMobile = computed(() => {
-  return canvasWidth.value < 768; // Hide keyboard text on screens smaller than 768px
+  // Check if device has touch capability and is a mobile/tablet device
+  const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  
+  // Check if the smaller dimension (portrait or landscape) is less than 768px
+  // This ensures we detect mobile in both orientations
+  const minDimension = Math.min(canvasWidth.value, canvasHeight.value);
+  const isMobileSize = minDimension < 768;
+  
+  // Also check user agent for mobile indicators
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isMobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+  
+  // Device is mobile if it has a mobile user agent OR (has touch and small screen)
+  return isMobileUserAgent || (hasTouchScreen && isMobileSize);
+});
+
+const showRotatePrompt = computed(() => {
+  // Show prompt when on mobile device in portrait mode (height > width)
+  return isMobile.value && canvasHeight.value > canvasWidth.value;
 });
 
 let ctx: CanvasRenderingContext2D | null = null;
@@ -732,7 +790,12 @@ const calculateBubbles = (): Bubble[] => {
 
   const whiteKeyWidth = keyboardRects[0]?.width || 0;
   const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
-  const bubbleWidth = whiteKeyWidth - blackKeyWidth;
+  let bubbleWidth = whiteKeyWidth - blackKeyWidth;
+  
+  // Make bubbles 50% thinner on mobile
+  if (isMobile.value) {
+    bubbleWidth *= 0.5;
+  }
 
   for (const note of midiNotes) {
     const midiKey = note.Key;
@@ -815,7 +878,13 @@ const triggerManualPlayEffects = (midiKey: number) => {
   const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
   const whiteKeyWidth = keyboardRects[0]?.width || 0;
   const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
-  const bubbleWidth = whiteKeyWidth - blackKeyWidth;
+  let bubbleWidth = whiteKeyWidth - blackKeyWidth;
+  
+  // Make bubbles 50% thinner on mobile
+  if (isMobile.value) {
+    bubbleWidth *= 0.5;
+  }
+  
   const x = keyRect.x + keyRect.width / 2;
   const y = pianoY.value;
 
@@ -1329,6 +1398,7 @@ let waveAnimationId: number;
 
 const initWaveCanvas = () => {
   if (!waveCanvasRef.value) return;
+  
   waveCanvasRef.value.width = window.innerWidth;
   waveCanvasRef.value.height = 60;
   // Position wave at keyboard top edge (keyboard is at 73% from top)
