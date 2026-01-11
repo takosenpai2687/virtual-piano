@@ -62,7 +62,7 @@
 
       <!-- Speed Control -->
       <button @click="cycleSpeed"
-        class="px-2 sm:px-3 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-blue-400 transition-all text-gray-300 font-medium text-xs sm:text-sm active:scale-95"
+        class="px-2 sm:px-3 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-blue-400 transition-all text-gray-300 font-bold text-xs sm:text-sm active:scale-95"
         :title="`Playback Speed: ${playbackSpeed}x`">
         <i class="fas fa-gauge-high mr-1 sm:mr-1.5"></i>
         {{ playbackSpeed }}x
@@ -86,7 +86,7 @@
           <div v-if="showVolumeSlider"
             class="absolute top-14 left-1/2 transform -translate-x-1/2 bg-gray-800/95 backdrop-blur-xl border border-gray-600 rounded-xl shadow-2xl p-3 z-50">
             <div class="flex flex-col items-center gap-2 w-12">
-              <span class="text-xs text-gray-400 font-medium">{{ Math.round(volume * 100) }}%</span>
+              <span class="text-xs text-gray-400 font-bold">{{ Math.round(volume * 100) }}%</span>
               <input type="range" v-model.number="volume" @input="updateVolume" min="0" max="1" step="0.01"
                 class="volume-slider h-24 sm:h-32 w-2 appearance-none bg-gray-700 rounded-full cursor-pointer"
                 style="writing-mode: vertical-lr; direction: rtl;" :style="{ '--volume-fill': (volume * 100) + '%' }" />
@@ -104,7 +104,7 @@
       <!-- Sheet Selector -->
       <div class="relative group flex items-center gap-2">
         <select v-model="selectedSheetKey" @change="onSheetChange"
-          class="sheet-selector bg-transparent text-gray-200 text-xs sm:text-sm font-medium focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95 max-w-[150px] sm:max-w-[200px]">
+          class="sheet-selector bg-transparent text-gray-200 text-xs sm:text-sm font-bold focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95 max-w-[150px] sm:max-w-[200px]">
           <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
             {{ getAllSheets()[key]?.name || key }}
           </option>
@@ -137,9 +137,10 @@
       <div
         class="absolute top-1/2 left-0 h-2 sm:h-1 bg-gradient-to-r from-pink-500 to-purple-500 group-hover:h-3 sm:group-hover:h-2 transition-[height] transform -translate-y-1/2 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
         :style="{ width: `${progressPercentage}%` }">
-        <!-- Throbber/Handle -->
+        <!-- Throbber/Handle with Glow -->
         <div
-          class="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 w-4 h-4 sm:w-3 sm:h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity scale-150">
+          class="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 w-4 h-4 sm:w-3 sm:h-3 bg-white rounded-full opacity-100 transition-all scale-100 group-hover:scale-150"
+          style="box-shadow: 0 0 8px 2px rgba(236, 72, 153, 0.6), 0 0 16px 4px rgba(236, 72, 153, 0.4), 0 0 24px 6px rgba(236, 72, 153, 0.2), 0 0 32px 8px rgba(236, 72, 153, 0.1);">
         </div>
       </div>
 
@@ -410,7 +411,7 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const waveCanvasRef = ref<HTMLCanvasElement | null>(null);
 const selectedSheetKey = ref<string>('unravel___animenz');
 const isPlaying = ref(false);
-const debugText = ref('← OR PRESS SPACE');
+const debugText = ref('PRESS PLAY BUTTON OR SPACE');
 const customSheet = ref<{ name: string; notes: MidiNote[] } | null>(null);
 const playbackTime = ref(0); // Single source of truth: current time in song (ms)
 const totalDuration = ref(1000); // Total song duration in ms
@@ -875,7 +876,7 @@ const onMouseMove = (e: MouseEvent | TouchEvent) => {
     engine.removeCurrentKeyVisual(mousePressedKey);
     
     // Schedule delayed audio release for the previous key with sustain
-    const releaseDelay = 300 * NOTE_DURATION_MULTIPLIER;
+    const releaseDelay = 200;
     const keyToRelease = mousePressedKey;
     
     // Clear any existing timeout for this key
@@ -1310,7 +1311,7 @@ const drawBackgroundEffects = () => {
   if (musicReactiveGlow.intensity > 0.1) {
     const centerX = canvasWidth.value / 2;
     const centerY = canvasHeight.value * 0.4;
-    const gradient = ctx!.createRadialGradient(centerX, centerY, 0, centerX, centerY, 300);
+    const gradient = ctx!.createRadialGradient(centerX, centerY, 0, centerX, centerY, 600);
 
     const alpha0 = (musicReactiveGlow.intensity * 40) | 0;
     const alpha1 = (musicReactiveGlow.intensity * 20) | 0;
@@ -1372,16 +1373,42 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   const isKeyDown = currentKeysSet.has(r.index + 36);
   const glowEffect = keyGlowEffects.get(r.index);
 
+  // Apply pressed-in effect with inset shadow and slight size reduction
+  let offsetX = 0;
+  let offsetY = 0;
+  let widthReduction = 0;
+  let heightReduction = 0;
+  
   if (isKeyDown) {
-    // Use gradient with configured colors for pressed key
-    const gradient = ctx.createLinearGradient(r.x, r.y, r.x, r.y + r.height);
+    // Make key appear pressed in
+    offsetY = r.height * 0.03; // Push down slightly
+    heightReduction = r.height * 0.03; // Make slightly shorter
+    if (r.isBlack) {
+      widthReduction = r.width * 0.02; // Slight width reduction for black keys
+      offsetX = widthReduction / 2; // Center the reduction
+    }
+  }
+
+  const adjustedRect = {
+    x: r.x + offsetX,
+    y: r.y + offsetY,
+    width: r.width - widthReduction,
+    height: r.height - heightReduction
+  };
+
+  if (isKeyDown) {
+    // Use darker gradient for pressed key with inset shadow effect
+    const gradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + adjustedRect.height);
     gradient.addColorStop(0, PIANO_KEYDOWN_COLOR_TOP);
     gradient.addColorStop(1, PIANO_KEYDOWN_COLOR_BOT);
     ctx.fillStyle = gradient;
-    ctx.shadowColor = PIANO_KEYDOWN_COLOR_BOT;
-    ctx.shadowBlur = SHADOW_BLUR * 6;
     ctx.strokeStyle = PIANO_KEYDOWN_COLOR_BOT;
-    ctx.shadowOffsetY = -80;
+    
+    // Inset shadow effect (dark shadow at top, lighter at bottom)
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = SHADOW_BLUR * 2;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 3; // Inward shadow
   } else if (glowEffect && glowEffect.intensity > 0) {
     // Apply glow effect from bubble hit
     ctx.fillStyle = r.fillStyle;
@@ -1409,10 +1436,34 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   }
 
   if (r.isBlack) {
-    drawRoundRect(ctx, r.x, r.y, r.width, r.height, 5, true, true);
+    drawRoundRect(ctx, adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height, 5, true, true);
+    
+    // Add inner shadow for pressed black keys
+    if (isKeyDown) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      const innerGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + adjustedRect.height * 0.3);
+      innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+      innerGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = innerGradient;
+      drawRoundRect(ctx, adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height * 0.3, 5, true, false);
+      ctx.restore();
+    }
   } else {
-    ctx.fillRect(r.x, r.y, r.width, r.height);
-    ctx.strokeRect(r.x, r.y, r.width, r.height);
+    ctx.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
+    ctx.strokeRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
+    
+    // Add inner shadow for pressed white keys
+    if (isKeyDown) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      const innerGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + adjustedRect.height * 0.2);
+      innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
+      innerGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = innerGradient;
+      ctx.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height * 0.2);
+      ctx.restore();
+    }
   }
 
   removeShadow();
@@ -1424,15 +1475,15 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
 
     if (r.isBlack) {
       ctx.fillStyle = WHITE;
-      const x = r.x + r.width / 2 - xOffset;
-      let y = r.y + r.height * 0.32;
+      const x = adjustedRect.x + adjustedRect.width / 2 - xOffset;
+      let y = adjustedRect.y + adjustedRect.height * 0.32;
       ctx.fillText(r.text || '', x, y);
       y += KB_FONT_SIZE * 1.3;
       ctx.fillText('↑', x, y);
     } else {
       ctx.fillStyle = isKeyDown ? WHITE : BLACK;
-      const x = r.x + r.width / 2 - xOffset;
-      const y = r.y + r.height * 0.28;
+      const x = adjustedRect.x + adjustedRect.width / 2 - xOffset;
+      const y = adjustedRect.y + adjustedRect.height * 0.28;
       ctx.fillText(r.text || '', x, y);
     }
   }

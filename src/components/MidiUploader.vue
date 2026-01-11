@@ -2,7 +2,7 @@
   <div class="relative inline-block z-20">
     <button
       @click="showUpload = !showUpload"
-      class="px-4 py-2 bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-500 hover:to-red-500 text-white rounded-full shadow-lg font-semibold transition-all flex items-center active:scale-95"
+      class="px-4 py-2 bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-500 hover:to-red-500 text-white rounded-full shadow-lg font-extrabold transition-all flex items-center active:scale-95"
     >
       <i class="fas fa-upload mr-2"></i>
       {{ showUpload ? 'Hide' : 'Upload' }}

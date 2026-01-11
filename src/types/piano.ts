@@ -45,7 +45,7 @@ export const BG_COLOR = '#0000004a';
 export const BLACK = '#000';
 export const WHITE = '#FFF';
 export const KB_FONT_SIZE = 20;
-export const KB_FONT = `${KB_FONT_SIZE}px Verdana`;
+export const KB_FONT = `bold ${KB_FONT_SIZE}px Verdana`;
 export const SHADOW_BLUR = 15;
 export const COLOR_WHEEL = [
   '#ffadad', '#ffd6a5', '#fdffb6', '#caffbf',
