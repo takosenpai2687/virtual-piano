@@ -934,6 +934,20 @@ const onKeyDown = (e: KeyboardEvent) => {
     return;
   }
 
+  // Left arrow key: rewind 10 seconds
+  if (e.code === 'ArrowLeft') {
+    e.preventDefault();
+    seek(-10000);
+    return;
+  }
+
+  // Right arrow key: forward 10 seconds
+  if (e.code === 'ArrowRight') {
+    e.preventDefault();
+    seek(10000);
+    return;
+  }
+
   if (e.repeat) return;
 
   const midiKey = engine.resolveKeyByKeyboard(e.key, e.shiftKey);
