@@ -139,6 +139,12 @@
       class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white/20 text-4xl sm:text-7xl font-bold z-0 pointer-events-none select-none tracking-widest whitespace-nowrap">
       {{ debugText }}
     </div>
+
+    <!-- GitHub Link -->
+    <a href="https://github.com/takosenpai2687/virtual-piano" target="_blank" rel="noopener noreferrer"
+      class="github-link fixed top-4 right-4 w-12 h-12 flex items-center justify-center rounded-full bg-gray-900/60 backdrop-blur-md border border-gray-700 text-gray-300 hover:text-white transition-all z-50 group">
+      <i class="fab fa-github text-xl"></i>
+    </a>
   </div>
 </template>
 
@@ -268,6 +274,25 @@
   100% {
     filter: hue-rotate(0deg) brightness(0.7);
   }
+}
+
+/* GitHub Link Styles */
+.github-link {
+  transition: all 0.3s ease;
+}
+
+.github-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px) brightness(1.2);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4),
+              0 0 40px rgba(255, 255, 255, 0.2),
+              inset 0 0 20px rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.github-link:active {
+  transform: scale(0.95);
 }
 </style>
 
