@@ -14,7 +14,6 @@ import { toneAudio } from './toneAudio';
 export class PianoEngine {
   private currentMidiKeys: number[] = [];
   private audioLoaded = false;
-  private cvWidth = 0;
   private cvHeight = 0;
   private whiteKeyWidth = 0;
   private blackKeyWidth = 0;
@@ -140,7 +139,7 @@ export class PianoEngine {
   }
 
   setDimensions(width: number, height: number): void {
-    this.cvWidth = width;
+    // Width and height are used to calculate keyboard dimensions
     this.cvHeight = height;
     this.whiteKeyWidth = width / N_WHITE_KEYS;
     this.blackKeyWidth = this.whiteKeyWidth * 0.58;

@@ -51,6 +51,54 @@
 
       <div class="w-px h-8 bg-gray-700 mx-1"></div>
 
+      <!-- Volume Control -->
+      <div class="relative flex items-center gap-2">
+        <button 
+          @click="showVolumeSlider = !showVolumeSlider"
+          class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-green-400 transition-all text-gray-300 relative group"
+          :title="`Volume: ${Math.round(volume * 100)}%`"
+        >
+          <i :class="['fas', volumeIcon, 'transition-all', volume > 0 ? 'animate-pulse-subtle' : '']"></i>
+        </button>
+        
+        <!-- Volume Slider Popup -->
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 translate-y-2 scale-95"
+          enter-to-class="opacity-100 translate-y-0 scale-100"
+          leave-active-class="transition-all duration-150 ease-in"
+          leave-from-class="opacity-100 translate-y-0 scale-100"
+          leave-to-class="opacity-0 translate-y-2 scale-95"
+        >
+          <div 
+            v-if="showVolumeSlider"
+            class="absolute top-14 -left-8 bg-gray-800/95 backdrop-blur-xl border border-gray-600 rounded-xl shadow-2xl p-3 z-50"
+          >
+            <div class="flex flex-col items-center gap-2 w-12">
+              <span class="text-xs text-gray-400 font-medium">{{ Math.round(volume * 100) }}%</span>
+              <input 
+                type="range" 
+                v-model.number="volume"
+                @input="updateVolume"
+                min="0" 
+                max="1" 
+                step="0.01"
+                class="volume-slider h-32 w-2 appearance-none bg-gray-700 rounded-full cursor-pointer"
+                style="writing-mode: vertical-lr; direction: rtl;"
+              />
+              <button 
+                @click="volume = volume > 0 ? 0 : 0.7; updateVolume()"
+                class="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                <i :class="['fas', volume > 0 ? 'fa-volume-xmark' : 'fa-volume-high']"></i>
+              </button>
+            </div>
+          </div>
+        </Transition>
+      </div>
+
+      <div class="w-px h-8 bg-gray-700 mx-1"></div>
+
       <!-- Sheet Selector -->
       <div class="relative group">
         <select
@@ -103,6 +151,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { PianoEngine } from '@/services/pianoEngine';
 import { sheets, getSheetNames } from '@/data/sheets';
 import MidiUploader from './MidiUploader.vue';
+import * as Tone from 'tone';
 
 import type { MidiNote, KeyboardRect, Bubble } from '@/types/piano';
 import {
@@ -125,6 +174,8 @@ const customSheet = ref<{ name: string; notes: MidiNote[] } | null>(null);
 const playbackTime = ref(0); // Single source of truth: current time in song (ms)
 const totalDuration = ref(1000); // Total song duration in ms
 const playbackSpeed = ref(1); // Speed multiplier
+const volume = ref(0.7); // Volume level 0-1
+const showVolumeSlider = ref(false); // Toggle volume slider visibility
 const canvasWidth = ref(window.innerWidth);
 const canvasHeight = ref(window.innerHeight);
 const pianoY = ref(0);
@@ -140,6 +191,13 @@ const progressPercentage = computed(() => {
   return Math.min(100, Math.max(0, (playbackTime.value / totalDuration.value) * 100));
 });
 
+const volumeIcon = computed(() => {
+  if (volume.value === 0) return 'fa-volume-xmark';
+  if (volume.value < 0.33) return 'fa-volume-off';
+  if (volume.value < 0.66) return 'fa-volume-low';
+  return 'fa-volume-high';
+});
+
 let ctx: CanvasRenderingContext2D | null = null;
 let engine: PianoEngine;
 let keyboardRects: KeyboardRect[] = [];
@@ -148,7 +206,7 @@ let lastFrameTime = 0;
 let animationFrameId: number;
 let isMouseDown = false;
 let mousePressedKey: number | null = null;
-let activeNoteTimeouts: Map<number, number> = new Map(); // Track active note release timeouts
+let activeNoteTimeouts: Map<number, ReturnType<typeof setTimeout>> = new Map(); // Track active note release timeouts
 let smokeParticles: Array<{
   x: number;
   y: number;
@@ -194,6 +252,18 @@ const cycleSpeed = () => {
   const currentIndex = speeds.indexOf(playbackSpeed.value);
   const nextIndex = (currentIndex + 1) % speeds.length;
   playbackSpeed.value = speeds[nextIndex];
+};
+
+const updateVolume = () => {
+  // Update Tone.js master volume
+  // Tone.js volume is in decibels: -60 dB (silent) to 0 dB (full)
+  // Convert 0-1 linear scale to -60 to 0 dB logarithmic scale
+  if (volume.value === 0) {
+    Tone.Destination.volume.value = -Infinity;
+  } else {
+    const dbValue = -60 + (volume.value * 60);
+    Tone.Destination.volume.value = dbValue;
+  }
 };
 
 const calcTotalDuration = () => {
@@ -862,15 +932,27 @@ onMounted(async () => {
   
   await engine.initSounds();
   
+  // Initialize volume
+  updateVolume();
+  
   onResize();
   initSheet();
   
   window.addEventListener('resize', onResize);
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('click', handleOutsideClick);
   
   update();
 });
+
+const handleOutsideClick = (e: MouseEvent) => {
+  // Close volume slider when clicking outside
+  const target = e.target as HTMLElement;
+  if (showVolumeSlider.value && !target.closest('.relative.flex.items-center.gap-2')) {
+    showVolumeSlider.value = false;
+  }
+};
 
 onUnmounted(() => {
   if (animationFrameId) {
@@ -884,5 +966,62 @@ onUnmounted(() => {
   window.removeEventListener('resize', onResize);
   window.removeEventListener('keydown', onKeyDown);
   window.removeEventListener('keyup', onKeyUp);
+  window.removeEventListener('click', handleOutsideClick);
 });
 </script>
+
+<style scoped>
+/* Volume Slider Styling */
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  transform: scale(1.2);
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.6);
+}
+
+.volume-slider::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+}
+
+.volume-slider::-moz-range-thumb:hover {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  transform: scale(1.2);
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.6);
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+</style>

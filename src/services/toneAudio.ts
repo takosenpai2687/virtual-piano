@@ -5,6 +5,15 @@ export class ToneAudioService {
   private isInitialized = false;
   private activeNotes: Map<number, { note: string; time: number }> = new Map();
 
+  constructor() {
+    // Keep audio context running even when tab is inactive
+    document.addEventListener('visibilitychange', () => {
+      if (Tone.context.state === 'suspended') {
+        Tone.context.resume();
+      }
+    });
+  }
+
   // Map MIDI note numbers to note names
   private midiToNote(midi: number): string {
     const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -65,6 +74,11 @@ export class ToneAudioService {
       } catch (error) {
         console.warn('Failed to start audio context:', error);
       }
+    }
+    
+    // Force resume if suspended (e.g., tab was inactive)
+    if (Tone.context.state === 'suspended') {
+      await Tone.context.resume();
     }
   }
 
