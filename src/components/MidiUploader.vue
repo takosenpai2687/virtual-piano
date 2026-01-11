@@ -32,37 +32,6 @@
         <p class="text-gray-600 mt-2">Converting MIDI file...</p>
       </div>
 
-      <div v-if="convertedNotes.length > 0" class="mt-4">
-        <p class="text-green-600 font-semibold mb-2">
-          <i class="fas fa-check-circle mr-2"></i>
-          Converted {{ convertedNotes.length }} notes!
-        </p>
-        
-        <div class="flex gap-2">
-          <button
-            @click="downloadJson"
-            class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-semibold text-sm transition-all active:scale-95"
-          >
-            <i class="fas fa-download mr-1"></i>
-            JSON
-          </button>
-          <button
-            @click="downloadJs"
-            class="flex-1 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full font-semibold text-sm transition-all active:scale-95"
-          >
-            <i class="fas fa-download mr-1"></i>
-            JS
-          </button>
-          <button
-            @click="useConverted"
-            class="flex-1 px-3 py-2 bg-gradient-to-r from-pink-600 to-red-600 hover:from-pink-500 hover:to-red-500 text-white rounded-full font-semibold text-sm transition-all active:scale-95"
-          >
-            <i class="fas fa-play mr-1"></i>
-            Play
-          </button>
-        </div>
-      </div>
-
       <div v-if="error" class="mt-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
         <i class="fas fa-exclamation-triangle mr-2"></i>
         {{ error }}
@@ -77,7 +46,8 @@ import { MidiConverter } from '@/services/midiConverter';
 import type { MidiNote } from '@/types/piano';
 
 const emit = defineEmits<{
-  (e: 'notesConverted', notes: MidiNote[], fileName: string): void;
+  (e: 'notesConverted', notes: MidiNote[], fileName: string, autoPlay?: boolean): void;
+  (e: 'sheetSaved'): void;
 }>();
 
 const showUpload = ref(false);
@@ -101,38 +71,28 @@ const onFileSelect = async (event: Event) => {
     const buffer = await file.arrayBuffer();
     const notes = await MidiConverter.parseMidiFile(buffer);
     convertedNotes.value = notes;
+    
+    // Auto-save to localStorage
+    const savedSheetsJson = localStorage.getItem('customSheets');
+    const savedSheets = savedSheetsJson ? JSON.parse(savedSheetsJson) : {};
+    const sheetKey = `custom_${currentFileName.value.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    
+    savedSheets[sheetKey] = {
+      name: currentFileName.value,
+      notes: notes
+    };
+    
+    localStorage.setItem('customSheets', JSON.stringify(savedSheets));
+    
+    // Emit events
+    emit('sheetSaved');
+    emit('notesConverted', notes, currentFileName.value, true);
+    showUpload.value = false;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to convert MIDI file';
     console.error('MIDI conversion error:', err);
   } finally {
     converting.value = false;
   }
-};
-
-const downloadJson = () => {
-  const json = MidiConverter.exportToJson(convertedNotes.value);
-  downloadFile(json, `${currentFileName.value}.json`, 'application/json');
-};
-
-const downloadJs = () => {
-  const js = MidiConverter.exportToJs(convertedNotes.value);
-  downloadFile(js, `${currentFileName.value}.js`, 'text/javascript');
-};
-
-const downloadFile = (content: string, filename: string, type: string) => {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
-
-const useConverted = () => {
-  emit('notesConverted', convertedNotes.value, currentFileName.value);
-  showUpload.value = false;
 };
 </script>

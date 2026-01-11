@@ -30,7 +30,7 @@
       style="max-width: 95vw;">
 
       <!-- Upload -->
-      <MidiUploader @notesConverted="onNotesConverted" />
+      <MidiUploader @notesConverted="onNotesConverted" @sheetSaved="onSheetSaved" />
 
       <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
 
@@ -102,16 +102,26 @@
       <div class="hidden sm:block w-px h-8 bg-gray-700 mx-1"></div>
 
       <!-- Sheet Selector -->
-      <div class="relative group">
+      <div class="relative group flex items-center gap-2">
         <select v-model="selectedSheetKey" @change="onSheetChange"
           class="bg-transparent text-gray-200 text-xs sm:text-sm font-medium focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95">
           <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
-            {{ sheets[key].name }}
+            {{ getAllSheets()[key]?.name || key }}
           </option>
         </select>
         <div class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
           <i class="fas fa-chevron-down text-xs"></i>
         </div>
+        
+        <!-- Delete Button (only for custom sheets) -->
+        <button
+          v-if="isCustomSheet(selectedSheetKey)"
+          @click="deleteCustomSheet"
+          class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-600 hover:text-white transition-all text-red-400 active:scale-95"
+          title="Delete this song"
+        >
+          <i class="fas fa-trash text-sm"></i>
+        </button>
       </div>
     </div>
 
@@ -339,7 +349,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { PianoEngine, toneAudio } from '@/services/pianoEngine';
-import { sheets, getSheetNames } from '@/data/sheets';
+import { sheets, getSheetNames, reloadSheets, getAllSheets } from '@/data/sheets';
 import MidiUploader from './MidiUploader.vue';
 import * as Tone from 'tone';
 
@@ -371,7 +381,7 @@ const WAVE_COLOR = '#F50057'; // Wave border color (Cyan)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const waveCanvasRef = ref<HTMLCanvasElement | null>(null);
-const selectedSheetKey = ref<string>('senbonzakura');
+const selectedSheetKey = ref<string>('unravel');
 const isPlaying = ref(false);
 const debugText = ref('← OR PRESS SPACE');
 const customSheet = ref<{ name: string; notes: MidiNote[] } | null>(null);
@@ -384,7 +394,7 @@ const canvasWidth = ref(window.innerWidth);
 const canvasHeight = ref(window.innerHeight);
 const pianoY = ref(0);
 
-const sheetKeys = getSheetNames();
+const sheetKeys = ref(getSheetNames());
 const currentSheet = computed(() => {
   if (customSheet.value) return customSheet.value;
   return sheets[selectedSheetKey.value];
@@ -499,15 +509,107 @@ let lastNoteTime = 0;
 
 const onSheetChange = () => {
   customSheet.value = null;
+  // Save the selected sheet to localStorage
+  localStorage.setItem('selectedSheetKey', selectedSheetKey.value);
   reset();
 };
 
-const onNotesConverted = (notes: MidiNote[], fileName: string) => {
+const onNotesConverted = (notes: MidiNote[], fileName: string, autoPlay?: boolean) => {
+  // Generate a unique key for this custom sheet
+  const sheetKey = `custom_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  
   customSheet.value = {
     name: fileName,
     notes: notes
   };
+  
+  // Update selected sheet key to show it in the dropdown
+  selectedSheetKey.value = sheetKey;
+  // Save the selected sheet to localStorage
+  localStorage.setItem('selectedSheetKey', sheetKey);
+  
   reset();
+  
+  // Auto-play if requested
+  if (autoPlay) {
+    // Small delay to ensure everything is initialized
+    setTimeout(() => {
+      play();
+    }, 100);
+  }
+};
+
+const onSheetSaved = () => {
+  // Reload sheets from localStorage
+  reloadSheets();
+  sheetKeys.value = getSheetNames();
+};
+
+const loadSavedSelection = () => {
+  try {
+    const savedKey = localStorage.getItem('selectedSheetKey');
+    if (savedKey && sheetKeys.value.includes(savedKey)) {
+      // Saved selection exists, use it
+      selectedSheetKey.value = savedKey;
+    } else {
+      // Saved selection doesn't exist or no saved selection, use first available
+      selectedSheetKey.value = sheetKeys.value[0] || 'unravel';
+      // Update localStorage with the fallback
+      localStorage.setItem('selectedSheetKey', selectedSheetKey.value);
+    }
+  } catch (err) {
+    console.error('Failed to load saved selection:', err);
+    selectedSheetKey.value = sheetKeys.value[0] || 'unravel';
+  }
+};
+
+const isCustomSheet = (key: string): boolean => {
+  return key.startsWith('custom_');
+};
+
+const deleteCustomSheet = () => {
+  const currentKey = selectedSheetKey.value;
+  
+  if (!isCustomSheet(currentKey)) {
+    return;
+  }
+  
+  try {
+    // Get existing saved sheets from localStorage
+    const savedSheetsJson = localStorage.getItem('customSheets');
+    const savedSheets = savedSheetsJson ? JSON.parse(savedSheetsJson) : {};
+    
+    // Delete the sheet
+    delete savedSheets[currentKey];
+    
+    // Save back to localStorage
+    localStorage.setItem('customSheets', JSON.stringify(savedSheets));
+    
+    // Reload sheets
+    reloadSheets();
+    sheetKeys.value = getSheetNames();
+    
+    // Find the next sheet to switch to
+    const currentIndex = sheetKeys.value.indexOf(currentKey);
+    let nextKey: string;
+    
+    if (currentIndex < sheetKeys.value.length - 1) {
+      // Switch to the next sheet
+      nextKey = sheetKeys.value[currentIndex + 1];
+    } else {
+      // We're at the end, switch to the first sheet
+      nextKey = sheetKeys.value[0];
+    }
+    
+    // Update selection and reset
+    selectedSheetKey.value = nextKey;
+    // Save the new selection to localStorage
+    localStorage.setItem('selectedSheetKey', nextKey);
+    customSheet.value = null;
+    reset();
+  } catch (err) {
+    console.error('Failed to delete sheet:', err);
+  }
 };
 
 const cycleSpeed = () => {
@@ -1509,6 +1611,7 @@ onMounted(async () => {
   updateVolume();
 
   onResize();
+  loadSavedSelection();
   initSheet();
   initFloatingParticles();
   initWaveCanvas();

@@ -33,6 +33,9 @@ An interactive web-based piano application with MIDI playback, real-time visual 
 - **Dynamic Island Control Panel**: Apple-inspired floating control center
 - **Sheet Music Selection**: Pre-loaded songs with dropdown selector
 - **Custom MIDI Upload**: Upload your own MIDI files for playback
+- **Auto-Save Library**: Uploaded MIDI files are automatically saved to browser storage and persist across sessions
+- **Delete Custom Songs**: Remove uploaded songs with a single click (auto-switches to next available song)
+- **Remember Selection**: Your last selected song is remembered and restored on page reload
 - **Keyboard Support**: Play piano with computer keyboard (mapped to keys)
 - **Mouse/Touch Support**: Click or tap piano keys directly
 
