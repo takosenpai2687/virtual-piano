@@ -17,7 +17,7 @@
     </div>
 
     <!-- Animated Electric Wave Border -->
-    <canvas ref="waveCanvasRef" class="wave-border-canvas"></canvas>
+    <canvas v-if="!isLandscapeMobile" ref="waveCanvasRef" class="wave-border-canvas"></canvas>
 
     <!-- Canvas for Piano -->
     <canvas ref="canvasRef" class="absolute w-full h-full z-10" @mousedown="onMouseDown" @mouseup="onMouseUp"
@@ -422,6 +422,11 @@ const isMobile = computed(() => {
 const showRotatePrompt = computed(() => {
   // Show prompt when on mobile device in portrait mode (height > width)
   return isMobile.value && canvasHeight.value > canvasWidth.value;
+});
+
+const isLandscapeMobile = computed(() => {
+  // Detect mobile device in landscape orientation
+  return isMobile.value && canvasWidth.value > canvasHeight.value;
 });
 
 const shouldThinBubbles = computed(() => {
