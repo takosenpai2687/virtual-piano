@@ -31,16 +31,15 @@ export const loadDefaultSheets = async (): Promise<void> => {
       const buffer = await response.arrayBuffer();
       const notes = await MidiConverter.parseMidiFile(buffer);
       
-      // Generate a key from the filename (remove extension and special chars)
+      // Generate a key from the filename (remove extension, replace spaces/special chars)
       const key = fileName
         .replace(/\.(mid|midi)$/i, '')
-        .replace(/[^a-zA-Z0-9]/g, '_')
+        .replace(/[\s.-]/g, '_')  // Replace spaces, dots, and hyphens with underscores
         .toLowerCase();
       
-      // Extract display name (remove " - Animenz" or similar suffixes and extension)
+      // Extract display name (remove extension only, keep full name)
       const name = fileName
-        .replace(/\.(mid|midi)$/i, '')
-        .replace(/ - [^-]+$/i, '');
+        .replace(/\.(mid|midi)$/i, '');
       
       loadedSheets[key] = {
         name,

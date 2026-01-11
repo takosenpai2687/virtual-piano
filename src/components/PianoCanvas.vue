@@ -1414,18 +1414,12 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   };
 
   if (isKeyDown) {
-    // Use darker gradient for pressed key with inset shadow effect
+    // Use darker gradient for pressed key
     const gradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + adjustedRect.height);
     gradient.addColorStop(0, PIANO_KEYDOWN_COLOR_TOP);
     gradient.addColorStop(1, PIANO_KEYDOWN_COLOR_BOT);
     ctx.fillStyle = gradient;
     ctx.strokeStyle = PIANO_KEYDOWN_COLOR_BOT;
-    
-    // Inset shadow effect (dark shadow at top, lighter at bottom)
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    ctx.shadowBlur = SHADOW_BLUR * 2;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 3; // Inward shadow
   } else if (glowEffect && glowEffect.intensity > 0) {
     // Apply glow effect from bubble hit
     ctx.fillStyle = r.fillStyle;
@@ -1455,30 +1449,82 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   if (r.isBlack) {
     drawRoundRect(ctx, adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height, 5, true, true);
     
-    // Add inner shadow for pressed black keys
+    // Add soft inset shadow on all four sides for pressed black keys
     if (isKeyDown) {
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      const innerGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + adjustedRect.height * 0.3);
-      innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
-      innerGradient.addColorStop(1, 'transparent');
-      ctx.fillStyle = innerGradient;
-      drawRoundRect(ctx, adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height * 0.3, 5, true, false);
+      
+      const shadowSize = 8;
+      
+      // Top shadow
+      const topGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + shadowSize);
+      topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+      topGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = topGradient;
+      drawRoundRect(ctx, adjustedRect.x, adjustedRect.y, adjustedRect.width, shadowSize, 5, true, false);
+      
+      // Left shadow
+      const leftGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x + shadowSize, adjustedRect.y);
+      leftGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+      leftGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = leftGradient;
+      ctx.fillRect(adjustedRect.x, adjustedRect.y, shadowSize, adjustedRect.height);
+      
+      // Right shadow
+      const rightGradient = ctx.createLinearGradient(adjustedRect.x + adjustedRect.width, adjustedRect.y, adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y);
+      rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+      rightGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = rightGradient;
+      ctx.fillRect(adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y, shadowSize, adjustedRect.height);
+      
+      // Bottom shadow
+      const bottomGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y + adjustedRect.height, adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize);
+      bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
+      bottomGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = bottomGradient;
+      ctx.fillRect(adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize, adjustedRect.width, shadowSize);
+      
       ctx.restore();
     }
   } else {
     ctx.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
     ctx.strokeRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
     
-    // Add inner shadow for pressed white keys
+    // Add soft inset shadow on all four sides for pressed white keys
     if (isKeyDown) {
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      const innerGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + adjustedRect.height * 0.2);
-      innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
-      innerGradient.addColorStop(1, 'transparent');
-      ctx.fillStyle = innerGradient;
-      ctx.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height * 0.2);
+      
+      const shadowSize = 10;
+      
+      // Top shadow
+      const topGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + shadowSize);
+      topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+      topGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = topGradient;
+      ctx.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, shadowSize);
+      
+      // Left shadow
+      const leftGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x + shadowSize, adjustedRect.y);
+      leftGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
+      leftGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = leftGradient;
+      ctx.fillRect(adjustedRect.x, adjustedRect.y, shadowSize, adjustedRect.height);
+      
+      // Right shadow
+      const rightGradient = ctx.createLinearGradient(adjustedRect.x + adjustedRect.width, adjustedRect.y, adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y);
+      rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
+      rightGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = rightGradient;
+      ctx.fillRect(adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y, shadowSize, adjustedRect.height);
+      
+      // Bottom shadow
+      const bottomGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y + adjustedRect.height, adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize);
+      bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0.2)');
+      bottomGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = bottomGradient;
+      ctx.fillRect(adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize, adjustedRect.width, shadowSize);
+      
       ctx.restore();
     }
   }
