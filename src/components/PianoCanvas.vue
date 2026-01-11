@@ -103,8 +103,9 @@
 
       <!-- Sheet Selector -->
       <div class="relative group flex items-center gap-2">
-        <select v-model="selectedSheetKey" @change="onSheetChange"
-          class="sheet-selector bg-transparent text-gray-200 text-xs sm:text-sm font-bold focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95 max-w-[150px] sm:max-w-[200px]">
+        <select ref="selectRef" v-model="selectedSheetKey" @change="onSheetChange"
+          class="sheet-selector bg-transparent text-gray-200 text-xs sm:text-sm font-bold focus:outline-none cursor-pointer py-2 pr-6 sm:pr-8 pl-2 appearance-none hover:text-white active:scale-95 max-w-[300px]"
+          :style="{ width: selectWidth + 'px' }">
           <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
             {{ getAllSheets()[key]?.name || key }}
           </option>
@@ -112,6 +113,8 @@
         <div class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
           <i class="fas fa-chevron-down text-xs"></i>
         </div>
+        <!-- Hidden span for measuring text width -->
+        <span ref="measureRef" class="measure-text text-xs sm:text-sm font-bold"></span>
         
         <!-- Delete Button (only for custom sheets) -->
         <button
@@ -410,6 +413,8 @@ const NOTE_DURATION_MULTIPLIER = 1.67; // Multiplier for note sustain duration (
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const waveCanvasRef = ref<HTMLCanvasElement | null>(null);
+const selectRef = ref<HTMLSelectElement | null>(null);
+const measureRef = ref<HTMLSpanElement | null>(null);
 const selectedSheetKey = ref<string>('unravel___animenz');
 const isPlaying = ref(false);
 const debugText = ref('PRESS PLAY BUTTON OR SPACE');
@@ -442,6 +447,27 @@ const volumeIcon = computed(() => {
   if (volume.value < 0.33) return 'fa-volume-down';
   if (volume.value < 0.66) return 'fa-volume-down';
   return 'fa-volume-up';
+});
+
+const selectWidth = computed(() => {
+  if (!measureRef.value) return 120; // Default fallback width
+  
+  // Get the current selection's display text
+  const currentText = getAllSheets()[selectedSheetKey.value]?.name || selectedSheetKey.value;
+  
+  // Set the text in the hidden measure element
+  measureRef.value.textContent = currentText;
+  
+  // Get the measured width
+  const textWidth = measureRef.value.offsetWidth;
+  
+  // Add padding: left (8px) + right (24px for icon on mobile, 32px on desktop) + buffer (8px)
+  const isMobileSize = canvasWidth.value < 640; // sm breakpoint
+  const padding = 8 + (isMobileSize ? 24 : 32) + 8;
+  
+  // Calculate total width with min and max constraints
+  const calculatedWidth = textWidth + padding;
+  return Math.max(80, Math.min(300, calculatedWidth));
 });
 
 const isMobile = computed(() => {
@@ -1921,12 +1947,22 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: width 0.15s ease-out;
 }
 
 .sheet-selector option {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Hidden element for measuring text width */
+.measure-text {
+  position: absolute;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  left: -9999px;
 }
 
 /* Volume Slider Styling */
