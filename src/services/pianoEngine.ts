@@ -67,6 +67,11 @@ export class PianoEngine {
     }
   }
 
+  removeCurrentKeyVisual(midiKey: number): void {
+    // Remove from visual tracking only, without releasing audio
+    this.currentMidiKeys = this.currentMidiKeys.filter(k => k !== midiKey);
+  }
+
   getCurrentKeys(): number[] {
     return [...this.currentMidiKeys];
   }

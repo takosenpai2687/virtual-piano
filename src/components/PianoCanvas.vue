@@ -127,7 +127,7 @@
 
     <!-- Progress Bar -->
     <div class="fixed w-full h-8 sm:h-6 cursor-pointer z-40 group hover:h-10 sm:hover:h-8 transition-all" :style="{ bottom: '28%' }"
-      @click="onProgressBarClick" @mousemove="onProgressBarHover">
+      @click="onProgressBarClick" @mousemove="onProgressBarHover" @mouseleave="onProgressBarLeave">
       <!-- Track -->
       <div
         class="absolute top-1/2 left-0 w-full h-2 sm:h-1 bg-gray-700/50 group-hover:h-3 sm:group-hover:h-2 transition-all transform -translate-y-1/2 backdrop-blur-sm">
@@ -142,6 +142,32 @@
           class="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 w-4 h-4 sm:w-3 sm:h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity scale-150">
         </div>
       </div>
+
+      <!-- Timestamp Display (Current / Total) -->
+      <div
+        class="absolute top-0 right-4 transform -translate-y-full mb-2 bg-gray-900/90 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs sm:text-sm font-mono shadow-lg border border-gray-700">
+        {{ formatTime(playbackTime) }} / {{ formatTime(totalDuration) }}
+      </div>
+
+      <!-- Hover Tooltip -->
+      <Transition
+        enter-active-class="transition-all duration-150 ease-out"
+        enter-from-class="opacity-0 scale-90 translate-y-1"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition-all duration-100 ease-in"
+        leave-from-class="opacity-100 scale-100 translate-y-0"
+        leave-to-class="opacity-0 scale-90 translate-y-1">
+        <div
+          v-if="progressBarHoverTime !== null"
+          class="absolute bottom-full mb-2 bg-gray-900/95 backdrop-blur-md px-2.5 py-1.5 rounded-lg text-white text-xs font-mono shadow-xl border border-pink-500/50 pointer-events-none"
+          :style="{ left: `${progressBarHoverX}px`, transform: 'translateX(-50%)' }">
+          {{ formatTime(progressBarHoverTime) }}
+          <!-- Arrow -->
+          <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
+            <div class="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-pink-500/50"></div>
+          </div>
+        </div>
+      </Transition>
     </div>
 
     <!-- Debug Text -->
@@ -394,6 +420,8 @@ const showVolumeSlider = ref(false); // Toggle volume slider visibility
 const canvasWidth = ref(window.innerWidth);
 const canvasHeight = ref(window.innerHeight);
 const pianoY = ref(0);
+const progressBarHoverTime = ref<number | null>(null); // Timestamp at hover position
+const progressBarHoverX = ref(0); // X position for hover tooltip
 
 const sheetKeys = ref(getSheetNames());
 const currentSheet = computed(() => {
@@ -455,7 +483,11 @@ let lastFrameTime = 0;
 let animationFrameId: number;
 let isMouseDown = false;
 let mousePressedKey: number | null = null;
+let cachedWhiteKeyWidth = 0;
+let cachedBlackKeyWidth = 0;
+let cachedBubbleWidth = 0;
 let activeNoteTimeouts: Map<number, ReturnType<typeof setTimeout>> = new Map(); // Track active note release timeouts
+let manualReleaseTimeouts: Map<number, ReturnType<typeof setTimeout>> = new Map(); // Track manual note release delays
 let smokeParticles: Array<{
   x: number;
   y: number;
@@ -657,6 +689,10 @@ const reset = () => {
   // Clear all active note timeouts
   activeNoteTimeouts.forEach(timeout => clearTimeout(timeout));
   activeNoteTimeouts.clear();
+  
+  // Clear all manual release timeouts
+  manualReleaseTimeouts.forEach(timeout => clearTimeout(timeout));
+  manualReleaseTimeouts.clear();
 
   initSheet();
 };
@@ -708,6 +744,13 @@ const pause = () => {
   isPlaying.value = false;
 };
 
+const formatTime = (ms: number): string => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
 const seek = (offsetMs: number) => {
   setTime(playbackTime.value + offsetMs);
 };
@@ -722,8 +765,18 @@ const onProgressBarClick = (e: MouseEvent) => {
   setTime(newTime);
 };
 
-const onProgressBarHover = () => {
-  // Logic for hover preview can be added here
+const onProgressBarHover = (e: MouseEvent) => {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const hoverX = e.clientX - rect.left;
+  const width = rect.width;
+  const percentage = Math.max(0, Math.min(1, hoverX / width));
+  
+  progressBarHoverTime.value = percentage * totalDuration.value;
+  progressBarHoverX.value = e.clientX;
+};
+
+const onProgressBarLeave = () => {
+  progressBarHoverTime.value = null;
 };
 
 const setTime = (timeMs: number) => {
@@ -734,6 +787,10 @@ const setTime = (timeMs: number) => {
   engine.clearCurrentKeys();
   activeNoteTimeouts.forEach(timeout => clearTimeout(timeout));
   activeNoteTimeouts.clear();
+  
+  // Clear all manual release timeouts
+  manualReleaseTimeouts.forEach(timeout => clearTimeout(timeout));
+  manualReleaseTimeouts.clear();
 
   // Update playback time immediately
   playbackTime.value = timeMs;
@@ -814,7 +871,26 @@ const onMouseMove = (e: MouseEvent | TouchEvent) => {
   if (!midiKey) return;
 
   if (mousePressedKey !== null && midiKey && midiKey !== mousePressedKey) {
-    engine.removeCurrentKey(mousePressedKey);
+    // Remove visual immediately for the previous key
+    engine.removeCurrentKeyVisual(mousePressedKey);
+    
+    // Schedule delayed audio release for the previous key with sustain
+    const releaseDelay = 300 * NOTE_DURATION_MULTIPLIER;
+    const keyToRelease = mousePressedKey;
+    
+    // Clear any existing timeout for this key
+    if (manualReleaseTimeouts.has(keyToRelease)) {
+      clearTimeout(manualReleaseTimeouts.get(keyToRelease)!);
+    }
+    
+    const timeout = setTimeout(() => {
+      toneAudio.releaseNote(keyToRelease);
+      manualReleaseTimeouts.delete(keyToRelease);
+    }, releaseDelay);
+    
+    manualReleaseTimeouts.set(keyToRelease, timeout);
+    
+    // Start new key immediately
     mousePressedKey = midiKey;
     engine.addCurrentKey(midiKey);
     engine.getCurrentKeys().forEach(mk => engine.playSound(mk, 127));
@@ -824,7 +900,24 @@ const onMouseMove = (e: MouseEvent | TouchEvent) => {
 
 const onMouseUp = () => {
   if (mousePressedKey !== null) {
-    engine.removeCurrentKey(mousePressedKey);
+    // Remove visual immediately for instant feedback
+    engine.removeCurrentKeyVisual(mousePressedKey);
+    
+    // Apply 167% sustain delay for audio only
+    const releaseDelay = 300 * NOTE_DURATION_MULTIPLIER; // Base duration of 300ms with multiplier
+    
+    // Clear any existing timeout for this key
+    if (manualReleaseTimeouts.has(mousePressedKey)) {
+      clearTimeout(manualReleaseTimeouts.get(mousePressedKey)!);
+    }
+    
+    const keyToRelease = mousePressedKey;
+    const timeout = setTimeout(() => {
+      toneAudio.releaseNote(keyToRelease);
+      manualReleaseTimeouts.delete(keyToRelease);
+    }, releaseDelay);
+    
+    manualReleaseTimeouts.set(mousePressedKey, timeout);
     mousePressedKey = null;
   }
   isMouseDown = false;
@@ -855,7 +948,23 @@ const onKeyUp = (e: KeyboardEvent) => {
   const midiKeyReleased = engine.resolveKeyByKeyboard(e.key, e.shiftKey);
   if (!midiKeyReleased) return;
 
-  engine.removeCurrentKey(midiKeyReleased);
+  // Remove visual immediately for instant feedback
+  engine.removeCurrentKeyVisual(midiKeyReleased);
+
+  // Apply 167% sustain delay for audio only
+  const releaseDelay = 300 * NOTE_DURATION_MULTIPLIER; // Base duration of 300ms with multiplier
+  
+  // Clear any existing timeout for this key
+  if (manualReleaseTimeouts.has(midiKeyReleased)) {
+    clearTimeout(manualReleaseTimeouts.get(midiKeyReleased)!);
+  }
+  
+  const timeout = setTimeout(() => {
+    toneAudio.releaseNote(midiKeyReleased);
+    manualReleaseTimeouts.delete(midiKeyReleased);
+  }, releaseDelay);
+  
+  manualReleaseTimeouts.set(midiKeyReleased, timeout);
 };
 
 const playNotesInTimeRange = (fromTime: number, toTime: number) => {
@@ -907,17 +1016,19 @@ const calculateBubbles = (): Bubble[] => {
 
   const pianoY = canvasRef.value.height * 0.73;
   const bubbles: Bubble[] = [];
+  const bubbleWidth = cachedBubbleWidth;
+  const currentTime = playbackTime.value;
 
-  const whiteKeyWidth = keyboardRects[0]?.width || 0;
-  const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
-  let bubbleWidth = whiteKeyWidth - blackKeyWidth;
-  
-  // Make bubbles 50% thinner on narrow screens or mobile portrait
-  if (shouldThinBubbles.value) {
-    bubbleWidth *= 0.5;
-  }
+  // Calculate visible time window for early exit optimization
+  const minVisibleTime = currentTime - canvasRef.value.height;
+  const maxVisibleTime = currentTime + pianoY;
 
   for (const note of midiNotes) {
+    // Early exit if note hasn't started yet (notes are sorted by time)
+    if (note.TimeMs > maxVisibleTime) break;
+    
+    // Skip notes that have already passed
+    if (note.TimeMs + note.DurationMs < minVisibleTime) continue;
     const midiKey = note.Key;
     const keyIndex = midiKey - 36;
 
@@ -943,9 +1054,11 @@ const calculateBubbles = (): Bubble[] => {
     // Skip bubbles that have already passed the piano line
     if (y > pianoY) continue;
 
+    // Cache color to avoid redundant calculation
+    const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
+    
     // Check if bubble is touching the keyboard and create effects
     if (bottomY >= pianoY - 5 && bottomY <= pianoY + 5) {
-      const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
       const x = keyRect.x + keyRect.width / 2 - bubbleWidth / 2;
 
       // Create smoke particles occasionally
@@ -970,7 +1083,7 @@ const calculateBubbles = (): Bubble[] => {
       y,
       width: bubbleWidth,
       height,
-      color: COLOR_WHEEL[midiKey % COLOR_WHEEL.length],
+      color,
       keyboardRectIndex: keyIndex
     });
   }
@@ -996,14 +1109,7 @@ const triggerManualPlayEffects = (midiKey: number) => {
   if (!keyRect) return;
 
   const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
-  const whiteKeyWidth = keyboardRects[0]?.width || 0;
-  const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
-  let bubbleWidth = whiteKeyWidth - blackKeyWidth;
-  
-  // Make bubbles 50% thinner on narrow screens or mobile portrait
-  if (shouldThinBubbles.value) {
-    bubbleWidth *= 0.5;
-  }
+  const bubbleWidth = cachedBubbleWidth;
   
   const x = keyRect.x + keyRect.width / 2;
   const y = pianoY.value;
@@ -1169,32 +1275,36 @@ const updateKeyGlowEffects = (dt: number) => {
 const drawBackgroundEffects = () => {
   if (!ctx) return;
 
-  // Draw floating particles
-  floatingParticles.forEach(particle => {
-    ctx!.save();
-    ctx!.globalAlpha = particle.alpha;
-    ctx!.fillStyle = particle.color;
-    ctx!.shadowColor = particle.color;
-    ctx!.shadowBlur = 8;
-    ctx!.beginPath();
-    ctx!.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-    ctx!.fill();
-    ctx!.restore();
-  });
+  // Draw floating particles - batch save/restore for all particles
+  if (floatingParticles.length > 0) {
+    ctx.save();
+    floatingParticles.forEach(particle => {
+      ctx!.globalAlpha = particle.alpha;
+      ctx!.fillStyle = particle.color;
+      ctx!.shadowColor = particle.color;
+      ctx!.shadowBlur = 8;
+      ctx!.beginPath();
+      ctx!.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx!.fill();
+    });
+    ctx.restore();
+  }
 
-  // Draw background waves
-  backgroundWaves.forEach(wave => {
-    ctx!.save();
-    ctx!.globalAlpha = wave.alpha;
-    ctx!.strokeStyle = wave.color;
-    ctx!.lineWidth = 2;
-    ctx!.shadowColor = wave.color;
-    ctx!.shadowBlur = 15;
-    ctx!.beginPath();
-    ctx!.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
-    ctx!.stroke();
-    ctx!.restore();
-  });
+  // Draw background waves - batch save/restore for all waves
+  if (backgroundWaves.length > 0) {
+    ctx.save();
+    ctx.lineWidth = 2;
+    backgroundWaves.forEach(wave => {
+      ctx!.globalAlpha = wave.alpha;
+      ctx!.strokeStyle = wave.color;
+      ctx!.shadowColor = wave.color;
+      ctx!.shadowBlur = 15;
+      ctx!.beginPath();
+      ctx!.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
+      ctx!.stroke();
+    });
+    ctx.restore();
+  }
 
   // Draw subtle background gradient that reacts to music
   if (musicReactiveGlow.intensity > 0.1) {
@@ -1202,8 +1312,10 @@ const drawBackgroundEffects = () => {
     const centerY = canvasHeight.value * 0.4;
     const gradient = ctx!.createRadialGradient(centerX, centerY, 0, centerX, centerY, 300);
 
-    gradient.addColorStop(0, `${musicReactiveGlow.color}${Math.floor(musicReactiveGlow.intensity * 40).toString(16).padStart(2, '0')}`);
-    gradient.addColorStop(0.5, `${musicReactiveGlow.color}${Math.floor(musicReactiveGlow.intensity * 20).toString(16).padStart(2, '0')}`);
+    const alpha0 = (musicReactiveGlow.intensity * 40) | 0;
+    const alpha1 = (musicReactiveGlow.intensity * 20) | 0;
+    gradient.addColorStop(0, `${musicReactiveGlow.color}${alpha0.toString(16).padStart(2, '0')}`);
+    gradient.addColorStop(0.5, `${musicReactiveGlow.color}${alpha1.toString(16).padStart(2, '0')}`);
     gradient.addColorStop(1, 'transparent');
 
     ctx!.save();
@@ -1214,10 +1326,10 @@ const drawBackgroundEffects = () => {
 };
 
 const drawSmokeParticles = () => {
-  if (!ctx) return;
+  if (!ctx || smokeParticles.length === 0) return;
 
+  ctx.save();
   smokeParticles.forEach(p => {
-    ctx!.save();
     ctx!.globalAlpha = p.alpha;
     ctx!.fillStyle = p.color;
     ctx!.shadowColor = p.color;
@@ -1225,15 +1337,15 @@ const drawSmokeParticles = () => {
     ctx!.beginPath();
     ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx!.fill();
-    ctx!.restore();
   });
+  ctx.restore();
 };
 
 const drawSparkParticles = () => {
-  if (!ctx) return;
+  if (!ctx || sparkParticles.length === 0) return;
 
+  ctx.save();
   sparkParticles.forEach(p => {
-    ctx!.save();
     ctx!.globalAlpha = p.alpha;
 
     // Draw bright core
@@ -1250,15 +1362,14 @@ const drawSparkParticles = () => {
     ctx!.beginPath();
     ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
     ctx!.fill();
-
-    ctx!.restore();
   });
+  ctx.restore();
 };
 
-const drawKey = (r: KeyboardRect) => {
+const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   if (!ctx) return;
 
-  const isKeyDown = engine.getCurrentKeys().includes(r.index + 36);
+  const isKeyDown = currentKeysSet.has(r.index + 36);
   const glowEffect = keyGlowEffects.get(r.index);
 
   if (isKeyDown) {
@@ -1472,12 +1583,15 @@ const update = () => {
   drawSmokeParticles();
   drawSparkParticles();
 
+  // Cache current keys as a Set for faster lookup
+  const currentKeysSet = new Set(engine.getCurrentKeys());
+
   keyboardRects.forEach(r => {
-    if (!r.isBlack) drawKey(r);
+    if (!r.isBlack) drawKey(r, currentKeysSet);
   });
 
   keyboardRects.forEach(r => {
-    if (r.isBlack) drawKey(r);
+    if (r.isBlack) drawKey(r, currentKeysSet);
   });
 
   animationFrameId = requestAnimationFrame(update);
@@ -1496,6 +1610,14 @@ const onResize = () => {
   keyboardRects = engine.createKeyboardRects();
 
   pianoY.value = window.innerHeight * 0.73;
+
+  // Cache key dimensions for performance
+  cachedWhiteKeyWidth = keyboardRects[0]?.width || 0;
+  cachedBlackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
+  cachedBubbleWidth = cachedWhiteKeyWidth - cachedBlackKeyWidth;
+  if (shouldThinBubbles.value) {
+    cachedBubbleWidth *= 0.5;
+  }
 
   calcTotalDuration();
 
