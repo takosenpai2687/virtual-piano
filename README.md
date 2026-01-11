@@ -40,11 +40,12 @@ An interactive web-based piano application with MIDI playback, real-time visual 
 - **Mouse/Touch Support**: Click or tap piano keys directly
 
 ### 📊 Built-in Songs
-- Unravel
-- Flower Dance
-- Luv Letter
-- My War
-- Senbonzakura
+Default songs are loaded dynamically from MIDI files in the `public/` folder:
+- Attack on Titan (Animenz arrangement)
+- Gurenge (Animenz arrangement)
+- Unravel (Animenz arrangement)
+
+To add more songs, simply place `.mid` or `.midi` files in the `public/` folder and they will be automatically loaded on startup.
 
 ## 🏗️ Technical Architecture
 
@@ -87,19 +88,24 @@ This architecture enables:
 ```
 src/
 ├── components/
-│   └── PianoCanvas.vue       # Main application component
+│   ├── PianoCanvas.vue       # Main application component
+│   └── MidiUploader.vue      # MIDI file upload component
 ├── services/
 │   ├── toneAudio.ts          # Tone.js Sampler service
 │   ├── pianoEngine.ts        # Piano logic & audio interface
-│   └── midiUploader.ts       # MIDI file parsing
+│   └── midiConverter.ts      # MIDI file parsing & conversion
 ├── types/
 │   └── piano.ts              # TypeScript interfaces
 ├── data/
-│   └── sheets/               # Pre-loaded MIDI data (JSON)
+│   └── sheets.ts             # Dynamic MIDI loading from public folder
 ├── assets/                   # Static assets
 ├── main.ts                   # App entry point
 ├── App.vue                   # Root component
 └── style.css                 # Global styles
+
+public/
+├── *.mid                     # Default MIDI files (dynamically loaded)
+└── _redirects                # Netlify redirects
 ```
 
 ## 🚀 Getting Started

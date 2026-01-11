@@ -65,6 +65,7 @@ const onFileSelect = async (event: Event) => {
   
   error.value = '';
   converting.value = true;
+  // Remove only the .mid or .midi extension, keep everything else including dashes
   currentFileName.value = file.name.replace(/\.(mid|midi)$/i, '');
   
   try {

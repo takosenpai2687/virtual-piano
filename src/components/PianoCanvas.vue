@@ -349,7 +349,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { PianoEngine, toneAudio } from '@/services/pianoEngine';
-import { sheets, getSheetNames, reloadSheets, getAllSheets } from '@/data/sheets';
+import { sheets, getSheetNames, reloadSheets, getAllSheets, loadDefaultSheets } from '@/data/sheets';
 import MidiUploader from './MidiUploader.vue';
 import * as Tone from 'tone';
 
@@ -378,17 +378,18 @@ import {
 const PIANO_KEYDOWN_COLOR_TOP = '#F50057';
 const PIANO_KEYDOWN_COLOR_BOT = '#C2185B';
 const WAVE_COLOR = '#F50057'; // Wave border color (Cyan)
+const NOTE_DURATION_MULTIPLIER = 1.67; // Multiplier for note sustain duration (1.67 = 67% longer)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const waveCanvasRef = ref<HTMLCanvasElement | null>(null);
-const selectedSheetKey = ref<string>('unravel');
+const selectedSheetKey = ref<string>('unravel___animenz');
 const isPlaying = ref(false);
 const debugText = ref('← OR PRESS SPACE');
 const customSheet = ref<{ name: string; notes: MidiNote[] } | null>(null);
 const playbackTime = ref(0); // Single source of truth: current time in song (ms)
 const totalDuration = ref(1000); // Total song duration in ms
 const playbackSpeed = ref(1); // Speed multiplier
-const volume = ref(0.7); // Volume level 0-1
+const volume = ref(0.9); // Volume level 0-1
 const showVolumeSlider = ref(false); // Toggle volume slider visibility
 const canvasWidth = ref(window.innerWidth);
 const canvasHeight = ref(window.innerHeight);
@@ -397,7 +398,8 @@ const pianoY = ref(0);
 const sheetKeys = ref(getSheetNames());
 const currentSheet = computed(() => {
   if (customSheet.value) return customSheet.value;
-  return sheets[selectedSheetKey.value];
+  const allSheets = getAllSheets();
+  return allSheets[selectedSheetKey.value];
 });
 
 const progressPercentage = computed(() => {
@@ -552,14 +554,19 @@ const loadSavedSelection = () => {
       // Saved selection exists, use it
       selectedSheetKey.value = savedKey;
     } else {
-      // Saved selection doesn't exist or no saved selection, use first available
-      selectedSheetKey.value = sheetKeys.value[0] || 'unravel';
-      // Update localStorage with the fallback
+      // No saved selection - use Unravel as default if it exists, otherwise first available
+      const defaultKey = 'unravel___animenz';
+      if (sheetKeys.value.includes(defaultKey)) {
+        selectedSheetKey.value = defaultKey;
+      } else {
+        selectedSheetKey.value = sheetKeys.value[0] || defaultKey;
+      }
+      // Update localStorage with the selection
       localStorage.setItem('selectedSheetKey', selectedSheetKey.value);
     }
   } catch (err) {
     console.error('Failed to load saved selection:', err);
-    selectedSheetKey.value = sheetKeys.value[0] || 'unravel';
+    selectedSheetKey.value = 'unravel___animenz';
   }
 };
 
@@ -867,18 +874,17 @@ const playNotesInTimeRange = (fromTime: number, toTime: number) => {
       const midiKey = note.Key;
       const vel = note.Vel || 127;
 
-      // Calculate how long the note should play
-      // If we're past the note start, only play remaining duration
-      const timeIntoNote = toTime - noteStartTime;
-      const remainingDuration = Math.max(0, note.DurationMs - timeIntoNote);
+      // Calculate the delay before playing this note
+      // The note should play at (noteStartTime - playbackTime.value) from now
+      const delayMs = Math.max(0, (noteStartTime - fromTime) / playbackSpeed.value);
 
-      // Only play if there's duration remaining
-      if (remainingDuration > 10) {
+      // Schedule the note to play at the correct time
+      setTimeout(() => {
         engine.addCurrentKey(midiKey);
         engine.playSound(midiKey, vel);
 
-        // Schedule note release
-        const adjustedDuration = remainingDuration / playbackSpeed.value;
+        // Schedule note release with duration multiplier for better sustain
+        const adjustedDuration = (note.DurationMs * NOTE_DURATION_MULTIPLIER) / playbackSpeed.value;
         const timeout = setTimeout(() => {
           engine.removeCurrentKey(midiKey);
           engine.setKeyVolume(midiKey, 1.0);
@@ -890,7 +896,7 @@ const playNotesInTimeRange = (fromTime: number, toTime: number) => {
           clearTimeout(activeNoteTimeouts.get(midiKey)!);
         }
         activeNoteTimeouts.set(midiKey, timeout);
-      }
+      }, delayMs);
     }
   }
 };
@@ -1606,6 +1612,11 @@ onMounted(async () => {
   engine = new PianoEngine();
 
   await engine.initSounds();
+
+  // Load default MIDI sheets from public folder
+  await loadDefaultSheets();
+  reloadSheets();
+  sheetKeys.value = getSheetNames();
 
   // Initialize volume
   updateVolume();

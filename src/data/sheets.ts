@@ -1,32 +1,61 @@
-// Import existing playlist files
-import unravelNotes from './sheets/unravel';
-import flowerDanceNotes from './sheets/flower_dance';
-import luvLetterNotes from './sheets/luv_letter';
-import mywarNotes from './sheets/mywar';
-import senbonzakuraNotes from './sheets/senbonzakura';
-import type { PianoSheet } from '@/types/piano';
+import type { PianoSheet, MidiNote } from '@/types/piano';
+import { MidiConverter } from '@/services/midiConverter';
 
-const baseSheets: Record<string, PianoSheet> = {
-  unravel: {
-    name: 'Unravel',
-    notes: unravelNotes
-  },
-  flowerDance: {
-    name: 'Flower Dance',
-    notes: flowerDanceNotes
-  },
-  luvLetter: {
-    name: 'Luv Letter',
-    notes: luvLetterNotes
-  },
-  mywar: {
-    name: 'My War',
-    notes: mywarNotes
-  },
-  senbonzakura: {
-    name: 'Senbonzakura',
-    notes: senbonzakuraNotes
+// Automatically discover all MIDI files in the public folder using Vite's glob import
+const midiFiles = import.meta.glob('/public/*.mid', { eager: false, query: '?url', import: 'default' });
+
+let baseSheets: Record<string, PianoSheet> = {};
+let sheetsLoaded = false;
+
+// Load MIDI files from public folder
+export const loadDefaultSheets = async (): Promise<void> => {
+  if (sheetsLoaded) return;
+  
+  const loadedSheets: Record<string, PianoSheet> = {};
+  
+  // Get all MIDI file paths
+  const midiFilePaths = Object.keys(midiFiles);
+  
+  for (const filePath of midiFilePaths) {
+    try {
+      // Extract filename from path
+      const fileName = filePath.split('/').pop() || '';
+      
+      // Fetch the MIDI file
+      const response = await fetch(`/${fileName}`);
+      if (!response.ok) {
+        console.warn(`Failed to load ${fileName}`);
+        continue;
+      }
+      
+      const buffer = await response.arrayBuffer();
+      const notes = await MidiConverter.parseMidiFile(buffer);
+      
+      // Generate a key from the filename (remove extension and special chars)
+      const key = fileName
+        .replace(/\.(mid|midi)$/i, '')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .toLowerCase();
+      
+      // Extract display name (remove " - Animenz" or similar suffixes and extension)
+      const name = fileName
+        .replace(/\.(mid|midi)$/i, '')
+        .replace(/ - [^-]+$/i, '');
+      
+      loadedSheets[key] = {
+        name,
+        notes
+      };
+    } catch (err) {
+      console.error(`Failed to parse MIDI file ${filePath}:`, err);
+    }
   }
+  
+  baseSheets = loadedSheets;
+  sheetsLoaded = true;
+  
+  // Update the sheets object after loading
+  sheets = getAllSheets();
 };
 
 // Load custom sheets from localStorage

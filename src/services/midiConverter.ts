@@ -6,6 +6,8 @@ interface MidiEvent {
   channel?: number;
   noteNumber?: number;
   velocity?: number;
+  metaType?: number;
+  metaData?: Uint8Array;
 }
 
 interface MidiTrack {
@@ -115,8 +117,16 @@ export class MidiConverter {
           // Meta event
           const metaType = view.getUint8(offset++);
           const { value: length, bytesRead: lengthBytes } = this.readVariableLength(view, offset);
-          offset += lengthBytes + length;
-          event = { deltaTime, type: 'meta' };
+          offset += lengthBytes;
+          
+          // Store meta event data for tempo extraction
+          const metaData = new Uint8Array(length);
+          for (let i = 0; i < length; i++) {
+            metaData[i] = view.getUint8(offset + i);
+          }
+          offset += length;
+          
+          event = { deltaTime, type: 'meta', metaType, metaData } as any;
         } else if (statusByte === 0xf0 || statusByte === 0xf7) {
           // SysEx event
           const { value: length, bytesRead: lengthBytes } = this.readVariableLength(view, offset);
@@ -137,10 +147,25 @@ export class MidiConverter {
   private static convertToMidiNotes(tracks: MidiTrack[], ticksPerBeat: number): MidiNote[] {
     const noteOnEvents = new Map<string, { time: number; key: number; velocity: number }>();
     const midiNotes: MidiNote[] = [];
-    const bpm = 120; // Default BPM, ideally this should be extracted from tempo meta events
-    const msPerTick = (60000 / bpm) / ticksPerBeat;
+    
+    // Extract tempo from tempo meta events (default to 120 BPM if not found)
+    let microsecondsPerBeat = 500000; // Default: 500,000 microseconds per quarter note = 120 BPM
+    
+    // First pass: find tempo in the first track (usually track 0)
+    if (tracks.length > 0) {
+      for (const event of tracks[0].events) {
+        if (event.type === 'meta' && event.metaType === 0x51 && event.metaData && event.metaData.length === 3) {
+          // Tempo meta event (0x51): 3 bytes representing microseconds per quarter note
+          microsecondsPerBeat = (event.metaData[0] << 16) | (event.metaData[1] << 8) | event.metaData[2];
+          break; // Use the first tempo we find
+        }
+      }
+    }
 
-    let currentTime = 0;
+    // Calculate time in milliseconds per tick using the tempo
+    // microseconds per beat / ticks per beat = microseconds per tick
+    // microseconds per tick / 1000 = milliseconds per tick
+    const msPerTick = (microsecondsPerBeat / ticksPerBeat) / 1000;
 
     // Combine all tracks
     const allEvents: Array<{ event: MidiEvent; track: number }> = [];
