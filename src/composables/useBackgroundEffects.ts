@@ -24,7 +24,7 @@ export interface BackgroundWave {
 
 /**
  * Composable for managing background visual effects
- * Includes floating particles and reactive waves
+ * Includes floating particles, reactive waves, and music-reactive glow
  */
 export function useBackgroundEffects(
   ctx: Ref<CanvasRenderingContext2D | null>,
@@ -37,38 +37,43 @@ export function useBackgroundEffects(
   let lastNoteTime = 0;
 
   const initFloatingParticles = () => {
+    const count = 18; // Increased from 15 (20% more)
     floatingParticles.value = [];
-    const particleCount = Math.floor((canvasWidth.value * canvasHeight.value) / 20000); // Adjust density based on screen size
-
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < count; i++) {
       floatingParticles.value.push({
         x: Math.random() * canvasWidth.value,
         y: Math.random() * canvasHeight.value,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.3,
-        size: Math.random() * 2 + 1,
-        alpha: Math.random() * 0.5 + 0.2,
-        baseAlpha: Math.random() * 0.5 + 0.2,
-        color: `hsl(${Math.random() * 60 + 200}, 70%, 60%)`, // Blue-purple range
+        size: Math.random() * 3 + 1,
+        alpha: Math.random() * 0.3 + 0.1,
+        baseAlpha: Math.random() * 0.3 + 0.1,
+        color: '#8b5cf6', // Purple color from COLOR_WHEEL
         pulsePhase: Math.random() * Math.PI * 2
       });
     }
   };
 
-  const updateFloatingParticles = () => {
-    floatingParticles.value.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
+  const updateFloatingParticles = (dt: number) => {
+    floatingParticles.value.forEach(particle => {
+      particle.x += particle.vx * dt * 0.05;
+      particle.y += particle.vy * dt * 0.05;
 
-      // Wrap around screen edges
-      if (p.x < 0) p.x = canvasWidth.value;
-      if (p.x > canvasWidth.value) p.x = 0;
-      if (p.y < 0) p.y = canvasHeight.value;
-      if (p.y > canvasHeight.value) p.y = 0;
+      // Wrap around screen
+      if (particle.x < 0) particle.x = canvasWidth.value;
+      if (particle.x > canvasWidth.value) particle.x = 0;
+      if (particle.y < 0) particle.y = canvasHeight.value;
+      if (particle.y > canvasHeight.value) particle.y = 0;
 
-      // Pulse effect
-      p.pulsePhase += 0.02;
-      p.alpha = p.baseAlpha + Math.sin(p.pulsePhase) * 0.2;
+      // Gentle pulsing effect
+      particle.pulsePhase += dt * 0.003;
+      particle.alpha = particle.baseAlpha * (0.7 + 0.3 * Math.sin(particle.pulsePhase));
+
+      // React to music
+      if (musicReactiveGlow.value.intensity > 0) {
+        particle.alpha = Math.min(1, particle.alpha + musicReactiveGlow.value.intensity * 0.4);
+        particle.size = Math.min(6, particle.size * (1 + musicReactiveGlow.value.intensity * 0.3));
+      }
     });
   };
 
@@ -76,36 +81,35 @@ export function useBackgroundEffects(
     if (!ctx.value || floatingParticles.value.length === 0) return;
 
     ctx.value.save();
-    floatingParticles.value.forEach(p => {
-      ctx.value!.globalAlpha = p.alpha;
-      ctx.value!.fillStyle = p.color;
-      ctx.value!.shadowColor = p.color;
+    floatingParticles.value.forEach(particle => {
+      ctx.value!.globalAlpha = particle.alpha;
+      ctx.value!.fillStyle = particle.color;
+      ctx.value!.shadowColor = particle.color;
       ctx.value!.shadowBlur = 8;
       ctx.value!.beginPath();
-      ctx.value!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.value!.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       ctx.value!.fill();
     });
     ctx.value.restore();
   };
 
-  const addBackgroundWave = (x: number, y: number) => {
-    const colors = ['#ec4899', '#8b5cf6', '#06b6d4', '#10b981'];
+  const createBackgroundWave = (x: number, y: number, color: string) => {
     backgroundWaves.value.push({
-      x,
-      y,
+      x: x,
+      y: y,
       radius: 0,
-      maxRadius: 150,
-      alpha: 0.6,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      speed: 2
+      maxRadius: Math.random() * 200 + 150,
+      alpha: 0.3,
+      color: color,
+      speed: Math.random() * 2 + 1
     });
   };
 
-  const updateBackgroundWaves = () => {
+  const updateBackgroundWaves = (dt: number) => {
     backgroundWaves.value = backgroundWaves.value.filter(wave => {
-      wave.radius += wave.speed;
-      wave.alpha *= 0.97;
-      return wave.alpha > 0.01;
+      wave.radius += wave.speed * dt * 0.1;
+      wave.alpha = Math.max(0, 0.3 * (1 - wave.radius / wave.maxRadius));
+      return wave.radius < wave.maxRadius;
     });
   };
 
@@ -113,10 +117,10 @@ export function useBackgroundEffects(
     if (!ctx.value || backgroundWaves.value.length === 0) return;
 
     ctx.value.save();
+    ctx.value.lineWidth = 2;
     backgroundWaves.value.forEach(wave => {
       ctx.value!.globalAlpha = wave.alpha;
       ctx.value!.strokeStyle = wave.color;
-      ctx.value!.lineWidth = 3;
       ctx.value!.shadowColor = wave.color;
       ctx.value!.shadowBlur = 15;
       ctx.value!.beginPath();
@@ -126,36 +130,54 @@ export function useBackgroundEffects(
     ctx.value.restore();
   };
 
-  const updateMusicReactiveGlow = (currentTime: number) => {
-    const timeSinceLastNote = currentTime - lastNoteTime;
-    if (timeSinceLastNote < 100) {
-      musicReactiveGlow.value.intensity = 1;
-    } else {
-      musicReactiveGlow.value.intensity *= 0.95;
-    }
+  const updateMusicReactiveEffects = (dt: number) => {
+    // Decay reactive glow
+    musicReactiveGlow.value.intensity = Math.max(0, musicReactiveGlow.value.intensity - dt * 0.005);
+
+    // Reset particle sizes
+    floatingParticles.value.forEach(particle => {
+      if (particle.size > 4) {
+        particle.size = Math.max(1, particle.size * 0.98);
+      }
+    });
   };
 
-  const triggerMusicReaction = (midiKey: number) => {
-    lastNoteTime = Date.now();
-    const hue = (midiKey * 5) % 360;
-    musicReactiveGlow.value.color = `hsl(${hue}, 70%, 50%)`;
-    musicReactiveGlow.value.intensity = 1;
+  const triggerMusicReaction = (color: string) => {
+    musicReactiveGlow.value.intensity = Math.min(1, musicReactiveGlow.value.intensity + 0.6);
+    musicReactiveGlow.value.color = color;
+    lastNoteTime = performance.now();
   };
 
   const drawMusicReactiveGlow = () => {
-    if (!ctx.value || musicReactiveGlow.value.intensity <= 0.01) return;
+    if (!ctx.value || musicReactiveGlow.value.intensity <= 0.1) return;
+
+    const centerX = canvasWidth.value / 2;
+    const centerY = canvasHeight.value * 0.4;
+    const gradient = ctx.value.createRadialGradient(centerX, centerY, 0, centerX, centerY, 600);
+
+    const alpha0 = (musicReactiveGlow.value.intensity * 40) | 0;
+    const alpha1 = (musicReactiveGlow.value.intensity * 20) | 0;
+    gradient.addColorStop(0, `${musicReactiveGlow.value.color}${alpha0.toString(16).padStart(2, '0')}`);
+    gradient.addColorStop(0.5, `${musicReactiveGlow.value.color}${alpha1.toString(16).padStart(2, '0')}`);
+    gradient.addColorStop(1, 'transparent');
 
     ctx.value.save();
-    ctx.value.globalAlpha = musicReactiveGlow.value.intensity * 0.15;
-    ctx.value.fillStyle = musicReactiveGlow.value.color;
-    ctx.value.shadowColor = musicReactiveGlow.value.color;
-    ctx.value.shadowBlur = 100;
-    const centerX = canvasWidth.value / 2;
-    const centerY = canvasHeight.value * 0.73;
-    ctx.value.beginPath();
-    ctx.value.arc(centerX, centerY, 200, 0, Math.PI * 2);
-    ctx.value.fill();
+    ctx.value.fillStyle = gradient;
+    ctx.value.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
     ctx.value.restore();
+  };
+
+  const drawBackgroundEffects = () => {
+    if (!ctx.value) return;
+
+    // Draw floating particles
+    drawFloatingParticles();
+
+    // Draw background waves
+    drawBackgroundWaves();
+
+    // Draw subtle background gradient that reacts to music
+    drawMusicReactiveGlow();
   };
 
   return {
@@ -165,11 +187,12 @@ export function useBackgroundEffects(
     initFloatingParticles,
     updateFloatingParticles,
     drawFloatingParticles,
-    addBackgroundWave,
+    createBackgroundWave,
     updateBackgroundWaves,
     drawBackgroundWaves,
-    updateMusicReactiveGlow,
+    updateMusicReactiveEffects,
     triggerMusicReaction,
-    drawMusicReactiveGlow
+    drawMusicReactiveGlow,
+    drawBackgroundEffects
   };
 }

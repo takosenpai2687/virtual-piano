@@ -40,73 +40,73 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
   const sparkParticles = ref<SparkParticle[]>([]);
   const keyGlowEffects = ref<Map<number, KeyGlowEffect>>(new Map());
 
-  const addSmokeParticle = (x: number, y: number, color: string) => {
-    const count = 3;
+  const createSmokeParticles = (x: number, y: number, color: string) => {
+    // Create 2-3 smoke particles
+    const count = Math.floor(Math.random() * 2) + 2;
     for (let i = 0; i < count; i++) {
       smokeParticles.value.push({
         x: x + (Math.random() - 0.5) * 20,
         y: y,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: -Math.random() * 2 - 1,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: -Math.random() * 0.8 - 0.3,
         life: 1,
-        maxLife: 1,
-        size: Math.random() * 15 + 10,
+        maxLife: Math.random() * 300 + 200,
+        size: Math.random() * 8 + 4,
         color: color,
         alpha: 0.6
       });
     }
   };
 
-  const addSparkParticles = (x: number, y: number, color: string) => {
-    const sparkCount = 8;
-    for (let i = 0; i < sparkCount; i++) {
-      const angle = (Math.PI * 2 * i) / sparkCount + Math.random() * 0.3;
-      const speed = Math.random() * 3 + 2;
+  const createElectricSparks = (x: number, y: number, color: string, width: number) => {
+    // Create 8-12 electric spark particles
+    const count = Math.floor(Math.random() * 5) + 8;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.random() * Math.PI) - Math.PI / 2; // Upward hemisphere
+      const speed = Math.random() * 1.5 + 0.5;
       sparkParticles.value.push({
-        x: x,
+        x: x + (Math.random() - 0.5) * width,
         y: y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        life: 1,
-        maxLife: 1,
-        size: Math.random() * 4 + 2,
+        life: 0,
+        maxLife: Math.random() * 200 + 150,
+        size: Math.random() * 3 + 2,
         color: color,
         alpha: 1,
-        brightness: 1
+        brightness: Math.random() * 0.5 + 0.5
       });
     }
   };
 
-  const updateSmokeParticles = () => {
+  const updateSmokeParticles = (dt: number) => {
     smokeParticles.value = smokeParticles.value.filter(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.05; // Gravity
-      p.life -= 0.015;
-      p.alpha = p.life * 0.6;
-      p.size += 0.5; // Expand over time
-      return p.life > 0;
+      p.life += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 0.001 * dt; // slight gravity
+      p.alpha = Math.max(0, 0.6 * (1 - p.life / p.maxLife));
+      p.size += 0.02 * dt; // grow slightly
+      return p.life < p.maxLife;
     });
   };
 
-  const updateSparkParticles = () => {
+  const updateSparkParticles = (dt: number) => {
     sparkParticles.value = sparkParticles.value.filter(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.2; // Gravity
-      p.vx *= 0.98; // Friction
-      p.vy *= 0.98;
-      p.life -= 0.04;
-      p.alpha = p.life;
-      p.brightness = p.life;
-      return p.life > 0;
+      p.life += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 0.003 * dt; // gravity
+      p.vx *= 0.98; // air resistance
+      p.alpha = Math.max(0, 1 - (p.life / p.maxLife));
+      return p.life < p.maxLife;
     });
   };
 
-  const updateKeyGlowEffects = (currentTime: number) => {
+  const updateKeyGlowEffects = (dt: number) => {
     keyGlowEffects.value.forEach((effect, key) => {
-      const elapsed = currentTime - effect.time;
-      effect.intensity = Math.max(0, 1 - elapsed / 500); // Fade over 500ms
+      effect.time += dt;
+      effect.intensity = Math.max(0, 1 - (effect.time / 300)); // Fade over 300ms
       if (effect.intensity <= 0) {
         keyGlowEffects.value.delete(key);
       }
@@ -117,7 +117,7 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
     keyGlowEffects.value.set(keyIndex, {
       intensity: 1,
       color: color,
-      time: Date.now()
+      time: 0
     });
   };
 
@@ -166,8 +166,8 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
     smokeParticles,
     sparkParticles,
     keyGlowEffects,
-    addSmokeParticle,
-    addSparkParticles,
+    createSmokeParticles,
+    createElectricSparks,
     updateSmokeParticles,
     updateSparkParticles,
     updateKeyGlowEffects,

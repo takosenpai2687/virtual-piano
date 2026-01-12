@@ -276,6 +276,13 @@ import RotatePrompt from './RotatePrompt.vue';
 import * as Tone from 'tone';
 import isMobileJS from 'ismobilejs';
 
+// Import composables
+import { useParticleEffects } from '@/composables/useParticleEffects';
+import { useBackgroundEffects } from '@/composables/useBackgroundEffects';
+import { useNoteVisualization } from '@/composables/useNoteVisualization';
+import { useWaveAnimation } from '@/composables/useWaveAnimation';
+import { usePlaybackControls } from '@/composables/usePlaybackControls';
+
 import type { MidiNote, KeyboardRect, Bubble } from '@/types/piano';
 import {
   BG_COLOR,
@@ -305,57 +312,47 @@ const WAVE_COLOR = '#F50057'; // Wave border color (Cyan)
 const NOTE_DURATION_MULTIPLIER = 1.67; // Multiplier for note sustain duration (1.67 = 67% longer)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const waveCanvasRef = ref<HTMLCanvasElement | null>(null);
 const selectedSheetKey = ref<string>('unravel___animenz');
 const songHistory = ref<string[]>([]); // Stack to track previously played songs
-const isPlaying = ref(false);
 const debugText = ref('PRESS PLAY BUTTON OR SPACE');
 const customSheet = ref<{ name: string; notes: MidiNote[] } | null>(null);
-const playbackTime = ref(0); // Single source of truth: current time in song (ms)
-const totalDuration = ref(1000); // Total song duration in ms
-const playbackSpeed = ref(1); // Speed multiplier
-const volume = ref(0.9); // Volume level 0-1
-const showVolumeSlider = ref(false); // Toggle volume slider visibility
-const playMode = ref<'single' | 'list' | 'random'>('single'); // Play mode: 单曲循环/列表循环/随机
 const canvasWidth = ref(window.innerWidth);
 const canvasHeight = ref(window.innerHeight);
 const pianoY = ref(0);
+
+// Initialize playback controls composable
+const playbackControls = usePlaybackControls();
+const {
+  isPlaying,
+  playbackTime,
+  totalDuration,
+  playbackSpeed,
+  volume,
+  playMode,
+  showVolumeSlider,
+  progressPercentage,
+  volumeIcon,
+  playModeIcon,
+  playModeTitle,
+  play: playControl,
+  pause: pauseControl,
+  stop: stopControl,
+  togglePlayPause: togglePlayPauseControl,
+  cycleSpeed,
+  cyclePlayMode,
+  formatTime,
+  seekTo: setTime
+} = playbackControls;
+
+// Initialize wave animation composable
+const waveAnimation = useWaveAnimation(WAVE_COLOR);
+const { waveCanvasRef, initWaveCanvas, animateWaves, stopWaveAnimation, repositionWave } = waveAnimation;
 
 const sheetKeys = ref(getSheetNames());
 const currentSheet = computed(() => {
   if (customSheet.value) return customSheet.value;
   const allSheets = getAllSheets();
   return allSheets[selectedSheetKey.value];
-});
-
-const progressPercentage = computed(() => {
-  if (totalDuration.value === 0) return 0;
-  return Math.min(100, Math.max(0, (playbackTime.value / totalDuration.value) * 100));
-});
-
-const volumeIcon = computed(() => {
-  if (volume.value === 0) return 'fa-volume-off';
-  if (volume.value < 0.33) return 'fa-volume-down';
-  if (volume.value < 0.66) return 'fa-volume-down';
-  return 'fa-volume-up';
-});
-
-const playModeIcon = computed(() => {
-  switch (playMode.value) {
-    case 'single': return { type: 'svg', icon: 'single-loop' }; // 单曲循环 (custom SVG)
-    case 'list': return { type: 'fa', icon: 'fa-sync-alt' }; // 列表循环 (circular sync)
-    case 'random': return { type: 'fa', icon: 'fa-random' }; // 随机 (shuffle icon)
-    default: return { type: 'svg', icon: 'single-loop' };
-  }
-});
-
-const playModeTitle = computed(() => {
-  switch (playMode.value) {
-    case 'single': return '单曲循环 (Single Loop)';
-    case 'list': return '列表循环 (List Loop)';
-    case 'random': return '随机 (Random)';
-    default: return '单曲循环';
-  }
 });
 
 const isMobile = computed(() => {
@@ -397,69 +394,21 @@ const shouldThinBubbles = computed(() => {
 
 let ctx: CanvasRenderingContext2D | null = null;
 let engine: PianoEngine;
-let keyboardRects: KeyboardRect[] = [];
-let midiNotes: MidiNote[] = [];
+let keyboardRects = ref<KeyboardRect[]>([]);
+let midiNotes = ref<MidiNote[]>([]);
 let lastFrameTime = 0;
 let animationFrameId: number;
 let isMouseDown = false;
 let mousePressedKey: number | null = null;
-let cachedWhiteKeyWidth = 0;
-let cachedBlackKeyWidth = 0;
-let cachedBubbleWidth = 0;
+let cachedWhiteKeyWidth = ref(0);
+let cachedBlackKeyWidth = ref(0);
 let activeNoteTimeouts: Map<number, ReturnType<typeof setTimeout>> = new Map(); // Track active note release timeouts
 let manualReleaseTimeouts: Map<number, ReturnType<typeof setTimeout>> = new Map(); // Track manual note release delays
-let smokeParticles: Array<{
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  size: number;
-  color: string;
-  alpha: number;
-}> = [];
 
-let sparkParticles: Array<{
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  size: number;
-  color: string;
-  alpha: number;
-  brightness: number;
-}> = [];
-
-let keyGlowEffects: Map<number, { intensity: number; color: string; time: number }> = new Map();
-
-// Background effects
-let backgroundWaves: Array<{
-  x: number;
-  y: number;
-  radius: number;
-  maxRadius: number;
-  alpha: number;
-  color: string;
-  speed: number;
-}> = [];
-
-let floatingParticles: Array<{
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  alpha: number;
-  baseAlpha: number;
-  color: string;
-  pulsePhase: number;
-}> = [];
-
-let musicReactiveGlow = { intensity: 0, color: '#4f46e5' };
-let lastNoteTime = 0;
+// Initialize composables after ctx is available
+let particleEffects: ReturnType<typeof useParticleEffects>;
+let backgroundEffects: ReturnType<typeof useBackgroundEffects>;
+let noteVisualization: ReturnType<typeof useNoteVisualization>;
 
 const onSheetChange = () => {
   customSheet.value = null;
@@ -571,126 +520,6 @@ const deleteCustomSheet = () => {
   }
 };
 
-const cycleSpeed = () => {
-  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
-  const currentIndex = speeds.indexOf(playbackSpeed.value);
-  const nextIndex = (currentIndex + 1) % speeds.length;
-  playbackSpeed.value = speeds[nextIndex];
-};
-
-const cyclePlayMode = () => {
-  const modes: Array<'single' | 'list' | 'random'> = ['single', 'list', 'random'];
-  const currentIndex = modes.indexOf(playMode.value);
-  const nextIndex = (currentIndex + 1) % modes.length;
-  playMode.value = modes[nextIndex];
-  // Save play mode to localStorage
-  localStorage.setItem('playMode', playMode.value);
-};
-
-const getNextSheetKey = (): string | null => {
-  const allKeys = sheetKeys.value;
-  if (allKeys.length === 0) return null;
-  
-  const currentIndex = allKeys.indexOf(selectedSheetKey.value);
-  
-  if (playMode.value === 'single') {
-    // Single loop: return same song
-    return selectedSheetKey.value;
-  } else if (playMode.value === 'list') {
-    // List loop: go to next song, wrap around to first
-    const nextIndex = (currentIndex + 1) % allKeys.length;
-    return allKeys[nextIndex];
-  } else if (playMode.value === 'random') {
-    // Random: pick a random song (avoid current if possible)
-    if (allKeys.length === 1) return allKeys[0];
-    let randomIndex;
-    do {
-      randomIndex = Math.floor(Math.random() * allKeys.length);
-    } while (randomIndex === currentIndex && allKeys.length > 1);
-    return allKeys[randomIndex];
-  }
-  
-  return null;
-};
-
-const previousSong = () => {
-  // Pop from history to go to previous song
-  if (songHistory.value.length > 0) {
-    const previousKey = songHistory.value.pop()!;
-    // Don't add current song back to history when going back
-    selectedSheetKey.value = previousKey;
-    localStorage.setItem('selectedSheetKey', previousKey);
-    customSheet.value = null;
-    reset();
-    // Auto-play the previous song
-    setTimeout(() => {
-      play();
-    }, 100);
-  } else {
-    // If no history, go to first song in list
-    const allKeys = sheetKeys.value;
-    if (allKeys.length > 0) {
-      const firstKey = allKeys[0];
-      if (firstKey !== selectedSheetKey.value) {
-        selectedSheetKey.value = firstKey;
-        localStorage.setItem('selectedSheetKey', firstKey);
-        customSheet.value = null;
-        reset();
-        setTimeout(() => {
-          play();
-        }, 100);
-      }
-    }
-  }
-};
-
-const nextSong = () => {
-  // Always use play mode logic for next song
-  const nextKey = getNextSheetKey();
-  if (!nextKey) return;
-  
-  if (nextKey === selectedSheetKey.value) {
-    // Same song, just restart
-    playbackTime.value = 0;
-    play();
-  } else {
-    // Push current song to history before switching
-    songHistory.value.push(selectedSheetKey.value);
-    // Switch to next song
-    selectedSheetKey.value = nextKey;
-    localStorage.setItem('selectedSheetKey', nextKey);
-    customSheet.value = null;
-    reset();
-    // Auto-play the next song
-    setTimeout(() => {
-      play();
-    }, 100);
-  }
-};
-
-const playNextSong = () => {
-  const nextKey = getNextSheetKey();
-  if (!nextKey) return;
-  
-  if (nextKey === selectedSheetKey.value) {
-    // Same song, just restart
-    playbackTime.value = 0;
-    play();
-  } else {
-    // Push current song to history before auto-switching
-    songHistory.value.push(selectedSheetKey.value);
-    // Switch to next song
-    selectedSheetKey.value = nextKey;
-    localStorage.setItem('selectedSheetKey', nextKey);
-    customSheet.value = null;
-    reset();
-    // Auto-play the next song
-    setTimeout(() => {
-      play();
-    }, 100);
-  }
-};
-
 const updateVolume = () => {
   // Update Tone.js master volume
   // Tone.js volume is in decibels: -60 dB (silent) to 0 dB (full)
@@ -704,11 +533,11 @@ const updateVolume = () => {
 };
 
 const calcTotalDuration = () => {
-  if (!midiNotes.length) {
+  if (!midiNotes.value.length) {
     totalDuration.value = 1000;
     return;
   }
-  const lastNote = midiNotes[midiNotes.length - 1];
+  const lastNote = midiNotes.value[midiNotes.value.length - 1];
   // Total duration is when last note ends
   totalDuration.value = lastNote.TimeMs + lastNote.DurationMs;
 };
@@ -739,9 +568,9 @@ const initSheet = () => {
   if (!currentSheet.value) return;
 
   // Use original MIDI velocities without normalization
-  midiNotes = [...currentSheet.value.notes];
+  midiNotes.value = [...currentSheet.value.notes];
   // Sort notes by time
-  midiNotes.sort((a, b) => a.TimeMs - b.TimeMs);
+  midiNotes.value.sort((a, b) => a.TimeMs - b.TimeMs);
 
   calcTotalDuration();
 };
@@ -777,30 +606,73 @@ const pause = () => {
   isPlaying.value = false;
 };
 
-const formatTime = (ms: number): string => {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+const getNextSheetKey = (): string | null => {
+  return playbackControls.getNextSheetKey(sheetKeys.value, selectedSheetKey.value);
 };
 
-const setTime = (timeMs: number) => {
-  // Clamp to valid range
-  timeMs = Math.max(0, Math.min(timeMs, totalDuration.value));
+const previousSong = () => {
+  // Pop from history to go to previous song
+  if (songHistory.value.length > 0) {
+    const previousKey = songHistory.value.pop()!;
+    selectedSheetKey.value = previousKey;
+    localStorage.setItem('selectedSheetKey', previousKey);
+    customSheet.value = null;
+    reset();
+    setTimeout(() => play(), 100);
+  } else {
+    // If no history, go to first song in list
+    const allKeys = sheetKeys.value;
+    if (allKeys.length > 0) {
+      const firstKey = allKeys[0];
+      if (firstKey !== selectedSheetKey.value) {
+        selectedSheetKey.value = firstKey;
+        localStorage.setItem('selectedSheetKey', firstKey);
+        customSheet.value = null;
+        reset();
+        setTimeout(() => play(), 100);
+      }
+    }
+  }
+};
 
-  // Clear all currently playing notes and their timeouts
-  engine.clearCurrentKeys();
-  activeNoteTimeouts.forEach(timeout => clearTimeout(timeout));
-  activeNoteTimeouts.clear();
+const nextSong = () => {
+  // Manual next button should always go to next song in list, regardless of play mode
+  const allKeys = sheetKeys.value;
+  if (allKeys.length === 0) return;
   
-  // Clear all manual release timeouts
-  manualReleaseTimeouts.forEach(timeout => clearTimeout(timeout));
-  manualReleaseTimeouts.clear();
+  const currentIndex = allKeys.indexOf(selectedSheetKey.value);
+  const nextIndex = (currentIndex + 1) % allKeys.length;
+  const nextKey = allKeys[nextIndex];
+  
+  if (nextKey === selectedSheetKey.value) {
+    playbackTime.value = 0;
+    play();
+  } else {
+    songHistory.value.push(selectedSheetKey.value);
+    selectedSheetKey.value = nextKey;
+    localStorage.setItem('selectedSheetKey', nextKey);
+    customSheet.value = null;
+    reset();
+    setTimeout(() => play(), 100);
+  }
+};
 
-  // Update playback time immediately
-  playbackTime.value = timeMs;
-  // Reset frame time so next frame starts fresh
-  lastFrameTime = 0;
+const playNextSong = () => {
+  // Auto-play next song respects the play mode
+  const nextKey = getNextSheetKey();
+  if (!nextKey) return;
+  
+  if (nextKey === selectedSheetKey.value) {
+    playbackTime.value = 0;
+    play();
+  } else {
+    songHistory.value.push(selectedSheetKey.value);
+    selectedSheetKey.value = nextKey;
+    localStorage.setItem('selectedSheetKey', nextKey);
+    customSheet.value = null;
+    reset();
+    setTimeout(() => play(), 100);
+  }
 };
 
 const onMouseDown = (e: MouseEvent | TouchEvent) => {
@@ -818,7 +690,7 @@ const onMouseDown = (e: MouseEvent | TouchEvent) => {
   const y = clientY - rect.top;
 
   let midiKey: number | null | undefined = null;
-  const blackKey = keyboardRects.find(r => r.isBlack &&
+  const blackKey = keyboardRects.value.find(r => r.isBlack &&
     x >= r.x && x <= r.x + r.width &&
     y >= r.y && y <= r.y + r.height
   );
@@ -826,7 +698,7 @@ const onMouseDown = (e: MouseEvent | TouchEvent) => {
   if (blackKey) {
     midiKey = blackKey.index + 36;
   } else {
-    midiKey = engine.resolveKeyByMouse(x, y, keyboardRects);
+    midiKey = engine.resolveKeyByMouse(x, y, keyboardRects.value);
   }
 
   if (!midiKey) return;
@@ -862,7 +734,7 @@ const onMouseMove = (e: MouseEvent | TouchEvent) => {
   const y = clientY - rect.top;
 
   let midiKey: number | null | undefined = null;
-  const blackKey = keyboardRects.find(r => r.isBlack &&
+  const blackKey = keyboardRects.value.find(r => r.isBlack &&
     x >= r.x && x <= r.x + r.width &&
     y >= r.y && y <= r.y + r.height
   );
@@ -870,7 +742,7 @@ const onMouseMove = (e: MouseEvent | TouchEvent) => {
   if (blackKey) {
     midiKey = blackKey.index + 36;
   } else {
-    midiKey = engine.resolveKeyByMouse(x, y, keyboardRects);
+    midiKey = engine.resolveKeyByMouse(x, y, keyboardRects.value);
   }
 
   if (!midiKey) return;
@@ -988,7 +860,7 @@ const onKeyUp = (e: KeyboardEvent) => {
 
 const playNotesInTimeRange = (fromTime: number, toTime: number) => {
   // Find and play all notes that should trigger in this time range
-  for (const note of midiNotes) {
+  for (const note of midiNotes.value) {
     const noteStartTime = note.TimeMs;
     const noteEndTime = note.TimeMs + note.DurationMs;
 
@@ -1004,7 +876,6 @@ const playNotesInTimeRange = (fromTime: number, toTime: number) => {
       const vel = note.Vel || 127;
 
       // Calculate the delay before playing this note
-      // The note should play at (noteStartTime - playbackTime.value) from now
       const delayMs = Math.max(0, (noteStartTime - fromTime) / playbackSpeed.value);
 
       // Schedule the note to play at the correct time
@@ -1030,366 +901,46 @@ const playNotesInTimeRange = (fromTime: number, toTime: number) => {
   }
 };
 
-const calculateBubbles = (): Bubble[] => {
-  if (!canvasRef.value) return [];
-
-  const pianoY = canvasRef.value.height * 0.73;
-  const bubbles: Bubble[] = [];
-  const bubbleWidth = cachedBubbleWidth;
-  const currentTime = playbackTime.value;
-
-  // Calculate visible time window for early exit optimization
-  const minVisibleTime = currentTime - canvasRef.value.height;
-  const maxVisibleTime = currentTime + pianoY;
-
-  for (const note of midiNotes) {
-    // Early exit if note hasn't started yet (notes are sorted by time)
-    if (note.TimeMs > maxVisibleTime) break;
-    
-    // Skip notes that have already passed
-    if (note.TimeMs + note.DurationMs < minVisibleTime) continue;
-    const midiKey = note.Key;
-    const keyIndex = midiKey - 36;
-
-    // Find the keyboard rect for this key
-    const keyRect = keyboardRects[keyIndex];
-    if (!keyRect) continue;
-
-    // Bubble dimensions (height = duration in pixels)
-    const height = note.DurationMs;
-
-    // Calculate bubble bottom Y position
-    // The BOTTOM of the bubble should reach pianoY exactly at note.TimeMs
-    // Bubble moves at 1 pixel per millisecond
-    // Bottom position: y + height = pianoY at time = note.TimeMs
-    // So: y + height = playbackTime.value - note.TimeMs + pianoY
-    // Therefore: y = playbackTime.value - note.TimeMs + pianoY - height
-    const bottomY = pianoY - (note.TimeMs - playbackTime.value);
-    const y = bottomY - height;
-
-    // Skip bubbles that haven't appeared yet (still above screen)
-    if (bottomY < 0) continue;
-
-    // Skip bubbles that have already passed the piano line
-    if (y > pianoY) continue;
-
-    // Cache color to avoid redundant calculation
-    const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
-    
-    // Check if bubble is touching the keyboard and create effects
-    if (bottomY >= pianoY - 5 && bottomY <= pianoY + 5) {
-      const x = keyRect.x + keyRect.width / 2 - bubbleWidth / 2;
-
-      // Create smoke particles occasionally
-      if (Math.random() > 0.7) {
-        createSmokeParticles(x + bubbleWidth / 2, pianoY, color);
-      }
-
-      // Create electric sparks when hitting
-      if (Math.random() > 0.6) {
-        createElectricSparks(x + bubbleWidth / 2, pianoY, color, bubbleWidth);
-      }
-
-      // Add key glow effect
-      keyGlowEffects.set(keyIndex, { intensity: 1, color: color, time: 0 });
-    }
-
-    // Position bubble centered on key
-    const x = keyRect.x + keyRect.width / 2 - bubbleWidth / 2;
-
-    bubbles.push({
-      x,
-      y,
-      width: bubbleWidth,
-      height,
-      color,
-      keyboardRectIndex: keyIndex
-    });
-  }
-
-  return bubbles;
-};
-
-const createBackgroundWave = (x: number, y: number, color: string) => {
-  backgroundWaves.push({
-    x: x,
-    y: y,
-    radius: 0,
-    maxRadius: Math.random() * 200 + 150,
-    alpha: 0.3,
-    color: color,
-    speed: Math.random() * 2 + 1
-  });
-};
-
 const triggerManualPlayEffects = (midiKey: number) => {
+  if (!particleEffects) return;
+  
   const keyIndex = midiKey - 36;
-  const keyRect = keyboardRects[keyIndex];
+  const keyRect = keyboardRects.value[keyIndex];
   if (!keyRect) return;
 
   const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
-  const bubbleWidth = cachedBubbleWidth;
+  const bubbleWidth = noteVisualization.cachedBubbleWidth.value;
   
   const x = keyRect.x + keyRect.width / 2;
   const y = pianoY.value;
 
   // Create smoke particles
   if (Math.random() > 0.5) {
-    createSmokeParticles(x, y, color);
+    particleEffects.createSmokeParticles(x, y, color);
   }
 
   // Create electric sparks
   if (Math.random() > 0.4) {
-    createElectricSparks(x, y, color, bubbleWidth);
+    particleEffects.createElectricSparks(x, y, color, bubbleWidth);
   }
 
   // Add key glow effect
-  keyGlowEffects.set(keyIndex, { intensity: 1, color: color, time: 0 });
-};
-
-const initFloatingParticles = () => {
-  const count = 18; // Increased from 15 (20% more)
-  floatingParticles = [];
-  for (let i = 0; i < count; i++) {
-    floatingParticles.push({
-      x: Math.random() * canvasWidth.value,
-      y: Math.random() * canvasHeight.value,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      size: Math.random() * 3 + 1,
-      alpha: Math.random() * 0.3 + 0.1,
-      baseAlpha: Math.random() * 0.3 + 0.1,
-      color: COLOR_WHEEL[Math.floor(Math.random() * COLOR_WHEEL.length)],
-      pulsePhase: Math.random() * Math.PI * 2
-    });
-  }
-};
-
-const updateBackgroundWaves = (dt: number) => {
-  backgroundWaves = backgroundWaves.filter(wave => {
-    wave.radius += wave.speed * dt * 0.1;
-    wave.alpha = Math.max(0, 0.3 * (1 - wave.radius / wave.maxRadius));
-    return wave.radius < wave.maxRadius;
-  });
-};
-
-const updateFloatingParticles = (dt: number) => {
-  floatingParticles.forEach(particle => {
-    particle.x += particle.vx * dt * 0.05;
-    particle.y += particle.vy * dt * 0.05;
-
-    // Wrap around screen
-    if (particle.x < 0) particle.x = canvasWidth.value;
-    if (particle.x > canvasWidth.value) particle.x = 0;
-    if (particle.y < 0) particle.y = canvasHeight.value;
-    if (particle.y > canvasHeight.value) particle.y = 0;
-
-    // Gentle pulsing effect
-    particle.pulsePhase += dt * 0.003;
-    particle.alpha = particle.baseAlpha * (0.7 + 0.3 * Math.sin(particle.pulsePhase));
-
-    // React to music
-    if (musicReactiveGlow.intensity > 0) {
-      particle.alpha = Math.min(1, particle.alpha + musicReactiveGlow.intensity * 0.4);
-      particle.size = Math.min(6, particle.size * (1 + musicReactiveGlow.intensity * 0.3));
-    }
-  });
-};
-
-const updateMusicReactiveEffects = (dt: number) => {
-  // Decay reactive glow
-  musicReactiveGlow.intensity = Math.max(0, musicReactiveGlow.intensity - dt * 0.005);
-
-  // Reset particle sizes
-  floatingParticles.forEach(particle => {
-    if (particle.size > 4) {
-      particle.size = Math.max(1, particle.size * 0.98);
-    }
-  });
-};
-
-const createSmokeParticles = (x: number, y: number, color: string) => {
-  // Create 2-3 smoke particles
-  const count = Math.floor(Math.random() * 2) + 2;
-  for (let i = 0; i < count; i++) {
-    smokeParticles.push({
-      x: x + (Math.random() - 0.5) * 20,
-      y: y,
-      vx: (Math.random() - 0.5) * 0.5,
-      vy: -Math.random() * 0.8 - 0.3,
-      life: 1,
-      maxLife: Math.random() * 300 + 200,
-      size: Math.random() * 8 + 4,
-      color: color,
-      alpha: 0.6
-    });
-  }
-};
-
-const createElectricSparks = (x: number, y: number, color: string, width: number) => {
+  particleEffects.addKeyGlowEffect(keyIndex, color);
+  
   // Trigger music reactive effects
-  musicReactiveGlow.intensity = Math.min(1, musicReactiveGlow.intensity + 0.6);
-  musicReactiveGlow.color = color;
-  lastNoteTime = performance.now();
-
+  backgroundEffects.triggerMusicReaction(color);
+  
   // Create background wave occasionally
   if (Math.random() > 0.7) {
-    createBackgroundWave(x, y - 50, color);
+    backgroundEffects.createBackgroundWave(x, y - 50, color);
   }
-
-  // Create 8-12 electric spark particles
-  const count = Math.floor(Math.random() * 5) + 8;
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.random() * Math.PI) - Math.PI / 2; // Upward hemisphere
-    const speed = Math.random() * 1.5 + 0.5;
-    sparkParticles.push({
-      x: x + (Math.random() - 0.5) * width,
-      y: y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 0,
-      maxLife: Math.random() * 200 + 150,
-      size: Math.random() * 3 + 2,
-      color: color,
-      alpha: 1,
-      brightness: Math.random() * 0.5 + 0.5
-    });
-  }
-};
-
-const updateSmokeParticles = (dt: number) => {
-  smokeParticles = smokeParticles.filter(p => {
-    p.life += dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.vy += 0.001 * dt; // slight gravity
-    p.alpha = Math.max(0, 0.6 * (1 - p.life / p.maxLife));
-    p.size += 0.02 * dt; // grow slightly
-    return p.life < p.maxLife;
-  });
-};
-
-const updateSparkParticles = (dt: number) => {
-  sparkParticles = sparkParticles.filter(p => {
-    p.life += dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.vy += 0.003 * dt; // gravity
-    p.vx *= 0.98; // air resistance
-    p.alpha = Math.max(0, 1 - (p.life / p.maxLife));
-    return p.life < p.maxLife;
-  });
-};
-
-const updateKeyGlowEffects = (dt: number) => {
-  keyGlowEffects.forEach((effect, key) => {
-    effect.time += dt;
-    effect.intensity = Math.max(0, 1 - (effect.time / 300)); // Fade over 300ms
-    if (effect.intensity <= 0) {
-      keyGlowEffects.delete(key);
-    }
-  });
-};
-
-const drawBackgroundEffects = () => {
-  if (!ctx) return;
-
-  // Draw floating particles - batch save/restore for all particles
-  if (floatingParticles.length > 0) {
-    ctx.save();
-    floatingParticles.forEach(particle => {
-      ctx!.globalAlpha = particle.alpha;
-      ctx!.fillStyle = particle.color;
-      ctx!.shadowColor = particle.color;
-      ctx!.shadowBlur = 8;
-      ctx!.beginPath();
-      ctx!.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx!.fill();
-    });
-    ctx.restore();
-  }
-
-  // Draw background waves - batch save/restore for all waves
-  if (backgroundWaves.length > 0) {
-    ctx.save();
-    ctx.lineWidth = 2;
-    backgroundWaves.forEach(wave => {
-      ctx!.globalAlpha = wave.alpha;
-      ctx!.strokeStyle = wave.color;
-      ctx!.shadowColor = wave.color;
-      ctx!.shadowBlur = 15;
-      ctx!.beginPath();
-      ctx!.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
-      ctx!.stroke();
-    });
-    ctx.restore();
-  }
-
-  // Draw subtle background gradient that reacts to music
-  if (musicReactiveGlow.intensity > 0.1) {
-    const centerX = canvasWidth.value / 2;
-    const centerY = canvasHeight.value * 0.4;
-    const gradient = ctx!.createRadialGradient(centerX, centerY, 0, centerX, centerY, 600);
-
-    const alpha0 = (musicReactiveGlow.intensity * 40) | 0;
-    const alpha1 = (musicReactiveGlow.intensity * 20) | 0;
-    gradient.addColorStop(0, `${musicReactiveGlow.color}${alpha0.toString(16).padStart(2, '0')}`);
-    gradient.addColorStop(0.5, `${musicReactiveGlow.color}${alpha1.toString(16).padStart(2, '0')}`);
-    gradient.addColorStop(1, 'transparent');
-
-    ctx!.save();
-    ctx!.fillStyle = gradient;
-    ctx!.fillRect(0, 0, canvasWidth.value, canvasHeight.value);
-    ctx!.restore();
-  }
-};
-
-const drawSmokeParticles = () => {
-  if (!ctx || smokeParticles.length === 0) return;
-
-  ctx.save();
-  smokeParticles.forEach(p => {
-    ctx!.globalAlpha = p.alpha;
-    ctx!.fillStyle = p.color;
-    ctx!.shadowColor = p.color;
-    ctx!.shadowBlur = 15;
-    ctx!.beginPath();
-    ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx!.fill();
-  });
-  ctx.restore();
-};
-
-const drawSparkParticles = () => {
-  if (!ctx || sparkParticles.length === 0) return;
-
-  ctx.save();
-  sparkParticles.forEach(p => {
-    ctx!.globalAlpha = p.alpha;
-
-    // Draw bright core
-    ctx!.fillStyle = '#ffffff';
-    ctx!.shadowColor = p.color;
-    ctx!.shadowBlur = 20 * p.brightness;
-    ctx!.beginPath();
-    ctx!.arc(p.x, p.y, p.size * 0.5, 0, Math.PI * 2);
-    ctx!.fill();
-
-    // Draw colored glow
-    ctx!.fillStyle = p.color;
-    ctx!.shadowBlur = 15 * p.brightness;
-    ctx!.beginPath();
-    ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx!.fill();
-  });
-  ctx.restore();
 };
 
 const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   if (!ctx) return;
 
   const isKeyDown = currentKeysSet.has(r.index + 36);
-  const glowEffect = keyGlowEffects.get(r.index);
+  const glowEffect = particleEffects.keyGlowEffects.value.get(r.index);
 
   // Apply pressed-in effect with inset shadow and slight size reduction
   let offsetX = 0;
@@ -1601,54 +1152,6 @@ const removeShadow = () => {
   ctx.shadowOffsetY = 0;
 };
 
-const drawBubbles = (bubbles: Bubble[]) => {
-  if (!ctx) return;
-
-  bubbles.forEach(b => {
-    ctx!.save();
-
-    // Create beautiful gradient for each bubble
-    const gradient = ctx!.createLinearGradient(b.x, b.y, b.x, b.y + b.height);
-
-    // Lighter shade at top, main color at bottom
-    const mainColor = b.color;
-    const lighterColor = lightenColor(mainColor, 30);
-    const darkerColor = darkenColor(mainColor, 10);
-
-    gradient.addColorStop(0, lighterColor);
-    gradient.addColorStop(0.5, mainColor);
-    gradient.addColorStop(1, darkerColor);
-
-    ctx!.fillStyle = gradient;
-    ctx!.shadowColor = mainColor;
-    ctx!.shadowBlur = SHADOW_BLUR;
-
-    drawRoundRect(ctx!, b.x, b.y, b.width, b.height, b.width / 2, true, false);
-
-    ctx!.restore();
-  });
-};
-
-// Helper function to lighten a hex color
-const lightenColor = (color: string, percent: number): string => {
-  const num = parseInt(color.replace('#', ''), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = Math.min(255, (num >> 16) + amt);
-  const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
-  const B = Math.min(255, (num & 0x0000FF) + amt);
-  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
-};
-
-// Helper function to darken a hex color
-const darkenColor = (color: string, percent: number): string => {
-  const num = parseInt(color.replace('#', ''), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = Math.max(0, (num >> 16) - amt);
-  const G = Math.max(0, ((num >> 8) & 0x00FF) - amt);
-  const B = Math.max(0, (num & 0x0000FF) - amt);
-  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
-};
-
 const update = () => {
   if (!ctx || !canvasRef.value) return;
 
@@ -1659,11 +1162,40 @@ const update = () => {
   engine.updateVolumes(true);
 
   // Draw background effects first (behind everything)
-  drawBackgroundEffects();
+  backgroundEffects.drawBackgroundEffects();
 
   // Calculate bubbles based on current playback time
-  const bubbles = calculateBubbles();
-  drawBubbles(bubbles);
+  const bubbles = noteVisualization.calculateBubbles();
+  
+  // Check for bubble collisions and trigger effects
+  const pianoYVal = canvasHeight.value * 0.73;
+  bubbles.forEach(bubble => {
+    if (noteVisualization.checkBubbleCollision(bubble, pianoYVal)) {
+      const color = bubble.color;
+      const x = bubble.x + bubble.width / 2;
+      
+      // Create smoke particles occasionally
+      if (Math.random() > 0.7) {
+        particleEffects.createSmokeParticles(x, pianoYVal, color);
+      }
+
+      // Create electric sparks when hitting
+      if (Math.random() > 0.6) {
+        particleEffects.createElectricSparks(x, pianoYVal, color, bubble.width);
+        backgroundEffects.triggerMusicReaction(color);
+      }
+
+      // Add key glow effect
+      particleEffects.addKeyGlowEffect(bubble.keyboardRectIndex, color);
+      
+      // Create background wave occasionally
+      if (Math.random() > 0.7) {
+        backgroundEffects.createBackgroundWave(x, pianoYVal - 50, color);
+      }
+    }
+  });
+  
+  noteVisualization.drawBubbles(bubbles);
 
   // Update and draw particles
   if (isPlaying.value) {
@@ -1678,12 +1210,12 @@ const update = () => {
     lastFrameTime = currentTime;
 
     // Update all particle effects
-    updateSmokeParticles(deltaMs);
-    updateSparkParticles(deltaMs);
-    updateKeyGlowEffects(deltaMs);
-    updateBackgroundWaves(deltaMs);
-    updateFloatingParticles(deltaMs);
-    updateMusicReactiveEffects(deltaMs);
+    particleEffects.updateSmokeParticles(deltaMs);
+    particleEffects.updateSparkParticles(deltaMs);
+    particleEffects.updateKeyGlowEffects(deltaMs);
+    backgroundEffects.updateBackgroundWaves(deltaMs);
+    backgroundEffects.updateFloatingParticles(deltaMs);
+    backgroundEffects.updateMusicReactiveEffects(deltaMs);
 
     // Update playback time
     const previousTime = playbackTime.value;
@@ -1702,26 +1234,26 @@ const update = () => {
   } else {
     lastFrameTime = 0;
     // Still update particles even when paused
-    updateSmokeParticles(16);
-    updateSparkParticles(16);
-    updateKeyGlowEffects(16);
-    updateBackgroundWaves(16);
-    updateFloatingParticles(16);
-    updateMusicReactiveEffects(16);
+    particleEffects.updateSmokeParticles(16);
+    particleEffects.updateSparkParticles(16);
+    particleEffects.updateKeyGlowEffects(16);
+    backgroundEffects.updateBackgroundWaves(16);
+    backgroundEffects.updateFloatingParticles(16);
+    backgroundEffects.updateMusicReactiveEffects(16);
   }
 
   // Draw all particles on top
-  drawSmokeParticles();
-  drawSparkParticles();
+  particleEffects.drawSmokeParticles();
+  particleEffects.drawSparkParticles();
 
   // Cache current keys as a Set for faster lookup
   const currentKeysSet = new Set(engine.getCurrentKeys());
 
-  keyboardRects.forEach(r => {
+  keyboardRects.value.forEach(r => {
     if (!r.isBlack) drawKey(r, currentKeysSet);
   });
 
-  keyboardRects.forEach(r => {
+  keyboardRects.value.forEach(r => {
     if (r.isBlack) drawKey(r, currentKeysSet);
   });
 
@@ -1738,125 +1270,27 @@ const onResize = () => {
   canvasHeight.value = window.innerHeight;
 
   engine.setDimensions(window.innerWidth, window.innerHeight);
-  keyboardRects = engine.createKeyboardRects();
+  keyboardRects.value = engine.createKeyboardRects();
 
   pianoY.value = window.innerHeight * 0.73;
 
   // Cache key dimensions for performance
-  cachedWhiteKeyWidth = keyboardRects[0]?.width || 0;
-  cachedBlackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
-  cachedBubbleWidth = cachedWhiteKeyWidth - cachedBlackKeyWidth;
-  if (shouldThinBubbles.value) {
-    cachedBubbleWidth *= 0.5;
-  }
+  cachedWhiteKeyWidth.value = keyboardRects.value[0]?.width || 0;
+  cachedBlackKeyWidth.value = keyboardRects.value.find(r => r.isBlack)?.width || 0;
 
   calcTotalDuration();
 
   // Reinitialize floating particles for new screen size
-  initFloatingParticles();
+  if (backgroundEffects) {
+    backgroundEffects.initFloatingParticles();
+  }
 
   // Reinitialize and reposition wave canvas
-  if (waveCanvasRef.value) {
-    waveCanvasRef.value.width = window.innerWidth;
-    waveCanvasRef.value.height = 60;
-    // Position wave at keyboard top edge
-    waveCanvasRef.value.style.top = `${window.innerHeight * 0.73 - 30}px`;
-    
-    // Restart wave animation to adapt to new dimensions
-    if (waveAnimationId) {
-      cancelAnimationFrame(waveAnimationId);
-    }
-    animateWaves();
+  if (waveAnimation && waveCanvasRef.value) {
+    repositionWave(pianoY.value);
   }
 
   // Bubbles will be recalculated automatically in the next frame
-};
-
-// Wave animation functions
-let waveAnimationId: number;
-
-const initWaveCanvas = () => {
-  if (!waveCanvasRef.value) return;
-  
-  waveCanvasRef.value.width = window.innerWidth;
-  waveCanvasRef.value.height = 60;
-  // Position wave at keyboard top edge (keyboard is at 73% from top)
-  waveCanvasRef.value.style.top = `${window.innerHeight * 0.73 - 30}px`;
-};
-
-const animateWaves = () => {
-  if (!waveCanvasRef.value) return;
-
-  const waveCtx = waveCanvasRef.value.getContext('2d');
-  if (!waveCtx) return;
-
-  const width = waveCanvasRef.value.width;
-  const height = waveCanvasRef.value.height;
-  const centerY = height / 2;
-
-  let time = 0;
-
-  const drawWave = () => {
-    waveCtx.clearRect(0, 0, width, height);
-
-    time += 0.02;
-
-    // Define 3 wave layers: 1 thick stable base wave + 2 complex composite waves
-    const waves = [
-      { freq: 0.02, amp: 2, phase: time * 0.5, speed: 0.3, color: WAVE_COLOR, width: 8, glow: 30 }, // Thick stable base wave
-      { freq: 0.025, amp: 3.5, phase: time * 1.2, speed: 1, color: WAVE_COLOR, width: 3, glow: 20 }, // Complex wave 1
-      { freq: 0.035, amp: 2.5, phase: time * 0.8, speed: -0.7, color: WAVE_COLOR, width: 2.5, glow: 25 } // Complex wave 2
-    ];
-
-    // Draw each wave layer
-    waves.forEach((wave, index) => {
-      waveCtx.beginPath();
-      waveCtx.strokeStyle = wave.color;
-      waveCtx.lineWidth = wave.width;
-      waveCtx.shadowColor = wave.color;
-      waveCtx.shadowBlur = wave.glow;
-      waveCtx.lineCap = 'round';
-      waveCtx.lineJoin = 'round';
-
-      for (let x = 0; x <= width; x += 2) {
-        // Complex wave function: combine multiple sine waves with different frequencies
-        let y = centerY;
-
-        // Primary wave
-        y += Math.sin(x * wave.freq + wave.phase + wave.speed * time) * wave.amp;
-
-        // Add harmonics for complexity
-        y += Math.sin(x * wave.freq * 2.3 + wave.phase * 1.7) * (wave.amp * 0.3);
-        y += Math.sin(x * wave.freq * 3.7 + wave.phase * 0.6) * (wave.amp * 0.2);
-        y += Math.sin(x * wave.freq * 5.1 - wave.phase * 1.3) * (wave.amp * 0.15);
-
-        // Add dampening near edges for visual interest
-        const edgeFactor = Math.min(x / 100, (width - x) / 100, 1);
-        const dampening = Math.pow(edgeFactor, 0.5);
-        y = centerY + (y - centerY) * dampening;
-
-        if (x === 0) {
-          waveCtx.moveTo(x, y);
-        } else {
-          waveCtx.lineTo(x, y);
-        }
-      }
-
-      waveCtx.stroke();
-
-      // Add extra glow layer for the brightest wave
-      if (index === 2) {
-        waveCtx.shadowBlur = wave.glow * 2;
-        waveCtx.globalAlpha = 0.3;
-        waveCtx.stroke();
-        waveCtx.globalAlpha = 1;
-      }
-    });
-
-    waveAnimationId = requestAnimationFrame(drawWave);
-  };
-
-  drawWave();
 };
 
 const handleVisibilityChange = () => {
@@ -1879,24 +1313,31 @@ onMounted(async () => {
   reloadSheets();
   sheetKeys.value = getSheetNames();
 
+  // Initialize composables after ctx is set
+  particleEffects = useParticleEffects(ref(ctx));
+  backgroundEffects = useBackgroundEffects(ref(ctx), canvasWidth, canvasHeight);
+  noteVisualization = useNoteVisualization(
+    ref(ctx),
+    midiNotes,
+    keyboardRects,
+    playbackTime,
+    canvasHeight,
+    shouldThinBubbles,
+    cachedWhiteKeyWidth,
+    cachedBlackKeyWidth
+  );
+
   // Initialize volume
   updateVolume();
 
   // Load saved play mode from localStorage
-  try {
-    const savedPlayMode = localStorage.getItem('playMode');
-    if (savedPlayMode && ['single', 'list', 'random'].includes(savedPlayMode)) {
-      playMode.value = savedPlayMode as 'single' | 'list' | 'random';
-    }
-  } catch (err) {
-    console.error('Failed to load saved play mode:', err);
-  }
+  playbackControls.loadSavedSettings();
 
   onResize();
   loadSavedSelection();
   initSheet();
-  initFloatingParticles();
-  initWaveCanvas();
+  backgroundEffects.initFloatingParticles();
+  initWaveCanvas(pianoY.value);
   animateWaves();
 
   window.addEventListener('resize', onResize);
@@ -1921,8 +1362,9 @@ onUnmounted(() => {
     cancelAnimationFrame(animationFrameId);
   }
 
-  if (waveAnimationId) {
-    cancelAnimationFrame(waveAnimationId);
+  // Stop wave animation
+  if (waveAnimation) {
+    stopWaveAnimation();
   }
 
   // Clear all active note timeouts

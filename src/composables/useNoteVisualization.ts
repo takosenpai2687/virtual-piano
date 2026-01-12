@@ -1,30 +1,30 @@
-import { ref, type Ref } from 'vue';
+import { computed, type Ref, type ComputedRef } from 'vue';
 import type { MidiNote, KeyboardRect, Bubble } from '@/types/piano';
-import { COLOR_WHEEL } from '@/types/piano';
+import { COLOR_WHEEL, SHADOW_BLUR } from '@/types/piano';
 
 /**
  * Composable for managing falling note visualization (bubbles)
  * Handles rendering and collision detection with keyboard
  */
 export function useNoteVisualization(
-  midiNotes: MidiNote[],
-  keyboardRects: KeyboardRect[],
+  ctx: Ref<CanvasRenderingContext2D | null>,
+  midiNotes: Ref<MidiNote[]>,
+  keyboardRects: Ref<KeyboardRect[]>,
   playbackTime: Ref<number>,
   canvasHeight: Ref<number>,
   shouldThinBubbles: Ref<boolean>,
   cachedWhiteKeyWidth: Ref<number>,
   cachedBlackKeyWidth: Ref<number>
 ) {
-  const cachedBubbleWidth = ref(0);
-
-  const updateBubbleWidth = () => {
-    cachedBubbleWidth.value = cachedWhiteKeyWidth.value - cachedBlackKeyWidth.value;
+  const cachedBubbleWidth = computed(() => {
+    let width = cachedWhiteKeyWidth.value - cachedBlackKeyWidth.value;
     if (shouldThinBubbles.value) {
-      cachedBubbleWidth.value *= 0.5;
+      width *= 0.5;
     }
-  };
+    return width;
+  });
 
-  const getBubbles = (): Bubble[] => {
+  const calculateBubbles = (): Bubble[] => {
     const pianoY = canvasHeight.value * 0.73;
     const bubbles: Bubble[] = [];
     const bubbleWidth = cachedBubbleWidth.value;
@@ -34,18 +34,17 @@ export function useNoteVisualization(
     const minVisibleTime = currentTime - canvasHeight.value;
     const maxVisibleTime = currentTime + pianoY;
 
-    for (const note of midiNotes) {
+    for (const note of midiNotes.value) {
       // Early exit if note hasn't started yet (notes are sorted by time)
       if (note.TimeMs > maxVisibleTime) break;
       
       // Skip notes that have already passed
       if (note.TimeMs + note.DurationMs < minVisibleTime) continue;
-      
       const midiKey = note.Key;
       const keyIndex = midiKey - 36;
 
       // Find the keyboard rect for this key
-      const keyRect = keyboardRects[keyIndex];
+      const keyRect = keyboardRects.value[keyIndex];
       if (!keyRect) continue;
 
       // Bubble dimensions (height = duration in pixels)
@@ -83,55 +82,37 @@ export function useNoteVisualization(
   };
 
   const checkBubbleCollision = (bubble: Bubble, pianoY: number): boolean => {
-    // Check if bubble is touching the keyboard (within 5px tolerance)
     const bottomY = bubble.y + bubble.height;
     return bottomY >= pianoY - 5 && bottomY <= pianoY + 5;
   };
 
-  const drawBubble = (
-    ctx: CanvasRenderingContext2D,
-    bubble: Bubble,
-    shouldThin: boolean
-  ) => {
-    const { x, y, width, height, color } = bubble;
-
-    // Create gradient
-    const gradient = ctx.createLinearGradient(x, y, x, y + height);
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, adjustColorBrightness(color, -30));
-
-    // Draw bubble body
-    ctx.fillStyle = gradient;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 10;
-
-    if (shouldThin) {
-      // Thin bubble (mobile/narrow view)
-      drawRoundedRect(ctx, x, y, width, height, width / 2);
-    } else {
-      // Normal bubble
-      drawRoundedRect(ctx, x, y, width, height, 5);
-    }
-
-    ctx.fill();
-
-    // Draw highlight
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    const highlightHeight = Math.min(height * 0.3, 20);
-    drawRoundedRect(ctx, x + width * 0.1, y + height * 0.05, width * 0.8, highlightHeight, 3);
-    ctx.fill();
-
-    // Reset shadow
-    ctx.shadowBlur = 0;
+  const lightenColor = (color: string, percent: number): string => {
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.min(255, (num >> 16) + amt);
+    const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
+    const B = Math.min(255, (num & 0x0000FF) + amt);
+    return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
   };
 
-  const drawRoundedRect = (
+  const darkenColor = (color: string, percent: number): string => {
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = Math.max(0, (num >> 16) - amt);
+    const G = Math.max(0, ((num >> 8) & 0x00FF) - amt);
+    const B = Math.max(0, (num & 0x0000FF) - amt);
+    return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
+  };
+
+  const drawRoundRect = (
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     width: number,
     height: number,
-    radius: number
+    radius: number,
+    fill: boolean,
+    stroke: boolean
   ) => {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -144,22 +125,47 @@ export function useNoteVisualization(
     ctx.lineTo(x, y + radius);
     ctx.quadraticCurveTo(x, y, x + radius, y);
     ctx.closePath();
+    if (fill) ctx.fill();
+    if (stroke) ctx.stroke();
+    // Remove shadow
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
   };
 
-  const adjustColorBrightness = (color: string, amount: number): string => {
-    // Parse hex color
-    const hex = color.replace('#', '');
-    const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
-    const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
-    const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  const drawBubbles = (bubbles: Bubble[]) => {
+    if (!ctx.value) return;
+
+    bubbles.forEach(b => {
+      ctx.value!.save();
+
+      // Create beautiful gradient for each bubble
+      const gradient = ctx.value!.createLinearGradient(b.x, b.y, b.x, b.y + b.height);
+
+      // Lighter shade at top, main color at bottom
+      const mainColor = b.color;
+      const lighterColor = lightenColor(mainColor, 30);
+      const darkerColor = darkenColor(mainColor, 10);
+
+      gradient.addColorStop(0, lighterColor);
+      gradient.addColorStop(0.5, mainColor);
+      gradient.addColorStop(1, darkerColor);
+
+      ctx.value!.fillStyle = gradient;
+      ctx.value!.shadowColor = mainColor;
+      ctx.value!.shadowBlur = SHADOW_BLUR;
+
+      drawRoundRect(ctx.value!, b.x, b.y, b.width, b.height, b.width / 2, true, false);
+
+      ctx.value!.restore();
+    });
   };
 
   return {
     cachedBubbleWidth,
-    updateBubbleWidth,
-    getBubbles,
+    calculateBubbles,
     checkBubbleCollision,
-    drawBubble
+    drawBubbles
   };
 }
