@@ -36,7 +36,8 @@
       :play-mode-icon="playModeIcon"
       :play-mode-title="playModeTitle"
       @stop="stop"
-      @seek="seek"
+      @previous-song="previousSong"
+      @next-song="nextSong"
       @toggle-play-pause="togglePlayPause"
       @cycle-speed="cycleSpeed"
       @update-volume="(v) => { volume = v; updateVolume(); }"
@@ -306,6 +307,7 @@ const NOTE_DURATION_MULTIPLIER = 1.67; // Multiplier for note sustain duration (
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const waveCanvasRef = ref<HTMLCanvasElement | null>(null);
 const selectedSheetKey = ref<string>('unravel___animenz');
+const songHistory = ref<string[]>([]); // Stack to track previously played songs
 const isPlaying = ref(false);
 const debugText = ref('PRESS PLAY BUTTON OR SPACE');
 const customSheet = ref<{ name: string; notes: MidiNote[] } | null>(null);
@@ -611,6 +613,61 @@ const getNextSheetKey = (): string | null => {
   return null;
 };
 
+const previousSong = () => {
+  // Pop from history to go to previous song
+  if (songHistory.value.length > 0) {
+    const previousKey = songHistory.value.pop()!;
+    // Don't add current song back to history when going back
+    selectedSheetKey.value = previousKey;
+    localStorage.setItem('selectedSheetKey', previousKey);
+    customSheet.value = null;
+    reset();
+    // Auto-play the previous song
+    setTimeout(() => {
+      play();
+    }, 100);
+  } else {
+    // If no history, go to first song in list
+    const allKeys = sheetKeys.value;
+    if (allKeys.length > 0) {
+      const firstKey = allKeys[0];
+      if (firstKey !== selectedSheetKey.value) {
+        selectedSheetKey.value = firstKey;
+        localStorage.setItem('selectedSheetKey', firstKey);
+        customSheet.value = null;
+        reset();
+        setTimeout(() => {
+          play();
+        }, 100);
+      }
+    }
+  }
+};
+
+const nextSong = () => {
+  // Always use play mode logic for next song
+  const nextKey = getNextSheetKey();
+  if (!nextKey) return;
+  
+  if (nextKey === selectedSheetKey.value) {
+    // Same song, just restart
+    playbackTime.value = 0;
+    play();
+  } else {
+    // Push current song to history before switching
+    songHistory.value.push(selectedSheetKey.value);
+    // Switch to next song
+    selectedSheetKey.value = nextKey;
+    localStorage.setItem('selectedSheetKey', nextKey);
+    customSheet.value = null;
+    reset();
+    // Auto-play the next song
+    setTimeout(() => {
+      play();
+    }, 100);
+  }
+};
+
 const playNextSong = () => {
   const nextKey = getNextSheetKey();
   if (!nextKey) return;
@@ -620,6 +677,8 @@ const playNextSong = () => {
     playbackTime.value = 0;
     play();
   } else {
+    // Push current song to history before auto-switching
+    songHistory.value.push(selectedSheetKey.value);
     // Switch to next song
     selectedSheetKey.value = nextKey;
     localStorage.setItem('selectedSheetKey', nextKey);
@@ -723,10 +782,6 @@ const formatTime = (ms: number): string => {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-};
-
-const seek = (offsetMs: number) => {
-  setTime(playbackTime.value + offsetMs);
 };
 
 const setTime = (timeMs: number) => {
@@ -883,14 +938,14 @@ const onKeyDown = (e: KeyboardEvent) => {
   // Left arrow key: rewind 10 seconds
   if (e.code === 'ArrowLeft') {
     e.preventDefault();
-    seek(-10000);
+    setTime(playbackTime.value - 10000);
     return;
   }
 
   // Right arrow key: forward 10 seconds
   if (e.code === 'ArrowRight') {
     e.preventDefault();
-    seek(10000);
+    setTime(playbackTime.value + 10000);
     return;
   }
 

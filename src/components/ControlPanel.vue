@@ -16,12 +16,12 @@
       <i class="fas fa-stop" style="font-size: 1.8vh;"></i>
     </button>
 
-    <!-- Rewind Button -->
-    <button @click="emit('seek', -10000)"
+    <!-- Previous Song Button -->
+    <button @click="emit('previousSong')"
       class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
       style="width: 4vh; height: 4vh; min-width: 32px; min-height: 32px;"
-      title="Rewind 10s">
-      <i class="fas fa-backward" style="font-size: 1.8vh;"></i>
+      title="Previous Song">
+      <i class="fas fa-step-backward" style="font-size: 1.8vh;"></i>
     </button>
 
     <!-- Play/Pause Button -->
@@ -31,12 +31,12 @@
       <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'" style="font-size: 2.5vh;"></i>
     </button>
 
-    <!-- Forward Button -->
-    <button @click="emit('seek', 10000)"
+    <!-- Next Song Button -->
+    <button @click="emit('nextSong')"
       class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
       style="width: 4vh; height: 4vh; min-width: 32px; min-height: 32px;"
-      title="Forward 10s">
-      <i class="fas fa-forward" style="font-size: 1.8vh;"></i>
+      title="Next Song">
+      <i class="fas fa-step-forward" style="font-size: 1.8vh;"></i>
     </button>
 
     <div class="hidden sm:block bg-gray-700" style="width: 1px; height: 3vh; margin: 0 0.3vh;"></div>
@@ -165,7 +165,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'stop'): void;
-  (e: 'seek', delta: number): void;
+  (e: 'previousSong'): void;
+  (e: 'nextSong'): void;
   (e: 'togglePlayPause'): void;
   (e: 'cycleSpeed'): void;
   (e: 'updateVolume', volume: number): void;
