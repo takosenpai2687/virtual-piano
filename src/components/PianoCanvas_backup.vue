@@ -1,7 +1,7 @@
 <template>
-  <div class="fixed inset-0 bg-gray-900 overflow-hidden select-none">
+  <div class="fixed inset-0 bg-gray-900 overflow-hidden">
     <!-- Star Background Layer -->
-    <div class="stars-container select-none">
+    <div class="stars-container">
       <div class="stars-box">
         <div class="stars stars-1"></div>
         <div class="stars stars-2"></div>
@@ -24,38 +24,204 @@
       @mousemove="onMouseMove" @touchstart="onMouseDown" @touchend="onMouseUp" @touchmove="onMouseMove"
       @contextmenu.prevent />
 
-    <!-- Control Panel Component -->
-    <ControlPanel
-      :is-playing="isPlaying"
-      :playback-speed="playbackSpeed"
-      :volume="volume"
-      :volume-icon="volumeIcon"
-      :selected-sheet-key="selectedSheetKey"
-      :sheet-keys="sheetKeys"
-      :all-sheets="getAllSheets()"
-      :play-mode-icon="playModeIcon"
-      :play-mode-title="playModeTitle"
-      @stop="stop"
-      @seek="seek"
-      @toggle-play-pause="togglePlayPause"
-      @cycle-speed="cycleSpeed"
-      @update-volume="(v) => { volume = v; updateVolume(); }"
-      @sheet-change="(key) => { selectedSheetKey = key; onSheetChange(); }"
-      @delete-sheet="deleteCustomSheet"
-      @cycle-play-mode="cyclePlayMode"
-      @notes-converted="onNotesConverted"
-      @sheet-saved="onSheetSaved"
-    />
+    <!-- Dynamic Island Control Panel -->
+    <div
+      class="fixed left-1/2 transform -translate-x-1/2 flex items-center justify-center bg-gray-900/80 backdrop-blur-xl rounded-full shadow-2xl border border-gray-700 z-50 text-white transition-all hover:bg-gray-900/95"
+      style="top: 1vh; max-width: 98vw; gap: 0.4vh; padding: 0.6vh 1.2vh; flex-wrap: nowrap;">
 
+      <!-- Upload -->
+      <MidiUploader @notesConverted="onNotesConverted" @sheetSaved="onSheetSaved" />
 
-    <!-- Progress Bar Component -->
-    <ProgressBar
-      :progress-percentage="progressPercentage"
-      :playback-time="playbackTime"
-      :total-duration="totalDuration"
-      :format-time="formatTime"
-      @seek="setTime"
-    />
+      <div class="hidden sm:block bg-gray-700" style="width: 1px; height: 3vh; margin: 0 0.3vh;"></div>
+
+      <!-- Controls -->
+      <button @click="stop"
+        class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-red-400 transition-all text-gray-300 active:scale-95"
+        style="width: 4vh; height: 4vh; min-width: 32px; min-height: 32px;"
+        title="Stop">
+        <i class="fas fa-stop" style="font-size: 1.8vh;"></i>
+      </button>
+
+      <button @click="seek(-10000)"
+        class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
+        style="width: 4vh; height: 4vh; min-width: 32px; min-height: 32px;"
+        title="Rewind 10s">
+        <i class="fas fa-backward" style="font-size: 1.8vh;"></i>
+      </button>
+
+      <button @click="togglePlayPause"
+        class="rounded-full bg-gradient-to-br from-pink-600 to-red-600 hover:from-pink-500 hover:to-red-500 flex items-center justify-center text-white shadow-lg shadow-pink-600/30 transition-all active:scale-95"
+        style="width: 5.5vh; height: 5.5vh; min-width: 44px; min-height: 44px; margin: 0 0.5vh;">
+        <i :class="isPlaying ? 'fas fa-pause' : 'fas fa-play'" style="font-size: 2.5vh;"></i>
+      </button>
+
+      <button @click="seek(10000)"
+        class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-pink-400 transition-all text-gray-300 active:scale-95"
+        style="width: 4vh; height: 4vh; min-width: 32px; min-height: 32px;"
+        title="Forward 10s">
+        <i class="fas fa-forward" style="font-size: 1.8vh;"></i>
+      </button>
+
+      <div class="hidden sm:block bg-gray-700" style="width: 1px; height: 3vh; margin: 0 0.3vh;"></div>
+
+      <!-- Speed Control -->
+      <button @click="cycleSpeed"
+        class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-blue-400 transition-all text-gray-300 font-bold active:scale-95"
+        style="padding: 0 1vh; height: 4vh; min-height: 32px; font-size: 1.6vh; white-space: nowrap;"
+        :title="`Playback Speed: ${playbackSpeed}x`">
+        <i class="fas fa-gauge-high" style="margin-right: 0.5vh;"></i>
+        {{ playbackSpeed }}x
+      </button>
+
+      <div class="hidden sm:block bg-gray-700" style="width: 1px; height: 3vh; margin: 0 0.3vh;"></div>
+
+      <!-- Volume Control -->
+      <div class="relative flex items-center" style="gap: 0.5vh;">
+        <button @click="showVolumeSlider = !showVolumeSlider"
+          class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-green-400 transition-all text-gray-300 relative group active:scale-95"
+          style="width: 4vh; height: 4vh; min-width: 32px; min-height: 32px;"
+          :title="`Volume: ${Math.round(volume * 100)}%`">
+          <i :class="['fas', volumeIcon, 'transition-all', volume > 0 ? 'animate-pulse-subtle' : '']" style="font-size: 1.8vh;"></i>
+        </button>
+
+        <!-- Volume Slider Popup -->
+        <Transition enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 translate-y-2 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100"
+          leave-active-class="transition-all duration-150 ease-in"
+          leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-2 scale-95">
+          <div v-if="showVolumeSlider"
+            class="absolute left-1/2 transform -translate-x-1/2 bg-gray-800/95 backdrop-blur-xl border border-gray-600 rounded-xl shadow-2xl z-50"
+            style="top: 5vh; padding: 1vh;">
+            <div class="flex flex-col items-center" style="gap: 0.5vh; width: 3.5vh; min-width: 32px;">
+              <span class="text-gray-400 font-bold" style="font-size: 1.4vh;">{{ Math.round(volume * 100) }}%</span>
+              <input type="range" v-model.number="volume" @input="updateVolume" min="0" max="1" step="0.01"
+                class="volume-slider appearance-none bg-gray-700 rounded-full cursor-pointer"
+                style="height: 12vh; width: 0.6vh; writing-mode: vertical-lr; direction: rtl;" :style="{ '--volume-fill': (volume * 100) + '%' }" />
+              <button @click="volume = volume > 0 ? 0 : 0.7; updateVolume()"
+                class="text-gray-400 hover:text-white transition-colors"
+                style="font-size: 1.4vh;">
+                <i :class="['fas', volume > 0 ? 'fa-volume-off' : 'fa-volume-up']"></i>
+              </button>
+            </div>
+          </div>
+        </Transition>
+      </div>
+
+      <div class="hidden sm:block bg-gray-700" style="width: 1px; height: 3vh; margin: 0 0.3vh;"></div>
+
+      <!-- Sheet Selector -->
+      <div class="relative group flex items-center" style="gap: 0.5vh;">
+        <!-- Animated Music Icon -->
+        <div class="music-icon-container flex items-center justify-center" title="Select a song" style="width: 3vh; height: 3vh; min-width: 24px; min-height: 24px;">
+          <i class="fas fa-music text-pink-400 music-icon-animated" style="font-size: 1.8vh;"></i>
+        </div>
+        
+        <select ref="selectRef" v-model="selectedSheetKey" @change="onSheetChange"
+          class="sheet-selector bg-transparent text-gray-200 font-bold focus:outline-none cursor-pointer appearance-none hover:text-white active:scale-95"
+          style="font-size: 1.3vh; padding: 0.8vh 3vh 0.8vh 0.8vh; max-width: 15rem;"
+          :style="{ width: selectWidth + 'px' }">
+          <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
+            {{ getAllSheets()[key]?.name || key }}
+          </option>
+        </select>
+        <div class="absolute top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400" style="right: 0.8vh;">
+          <i class="fas fa-chevron-down" style="font-size: 1.4vh;"></i>
+        </div>
+        <!-- Hidden span for measuring text width -->
+        <span ref="measureRef" class="measure-text font-bold" style="font-size: 1.6vh;"></span>
+        
+        <!-- Delete Button (only for custom sheets) -->
+        <button
+          v-if="isCustomSheet(selectedSheetKey)"
+          @click="deleteCustomSheet"
+          class="flex items-center justify-center rounded-full hover:bg-red-600 hover:text-white transition-all text-red-400 active:scale-95"
+          style="width: 3.5vh; height: 3.5vh; min-width: 28px; min-height: 28px;"
+          title="Delete this song"
+        >
+          <i class="fas fa-trash" style="font-size: 1.6vh;"></i>
+        </button>
+      </div>
+
+      <div class="hidden sm:block bg-gray-700" style="width: 1px; height: 3vh; margin: 0 0.3vh;"></div>
+
+      <!-- Play Mode Control -->
+      <button @click="cyclePlayMode"
+        class="flex items-center justify-center rounded-full hover:bg-gray-700 hover:text-purple-400 transition-all text-gray-300 active:scale-95 relative group"
+        style="width: 4vh; height: 4vh; min-width: 32px; min-height: 32px;"
+        :title="playModeTitle">
+        <!-- FontAwesome Icon -->
+        <i v-if="playModeIcon.type === 'fa'" :class="['fas', playModeIcon.icon, 'transition-all duration-300']" 
+           style="font-size: 1.8vh;"
+           :style="{ animation: 'playModeIconPulse 2s ease-in-out infinite' }"></i>
+        <!-- Custom SVG Icon for Single Loop -->
+        <svg v-else-if="playModeIcon.type === 'svg' && playModeIcon.icon === 'single-loop'" 
+             class="transition-all duration-300"
+             style="width: 2vh; height: 2vh; min-width: 16px; min-height: 16px;"
+             :style="{ animation: 'playModeIconPulse 2s ease-in-out infinite' }"
+             viewBox="0 0 24 24" 
+             fill="none" 
+             stroke="currentColor" 
+             stroke-width="2" 
+             stroke-linecap="round" 
+             stroke-linejoin="round">
+          <!-- Circular arrow path -->
+          <path d="M21 12a9 9 0 1 1-2.636-6.364L21 8.25V2.25h-6l2.879 2.879"></path>
+          <!-- Number 1 in center -->
+          <text x="12" y="16" text-anchor="middle" fill="currentColor" font-size="10" font-weight="bold" stroke="none">1</text>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="fixed w-full cursor-pointer z-40 group transition-all" 
+      style="height: 2rem; bottom: 28%;"
+      @click="onProgressBarClick" @mousemove="onProgressBarHover" @mouseleave="onProgressBarLeave">
+      <!-- Track -->
+      <div
+        class="absolute top-1/2 left-0 w-full bg-gray-700/50 transition-all transform -translate-y-1/2 backdrop-blur-sm"
+        style="height: 0.25rem;">
+      </div>
+
+      <!-- Progress Fill -->
+      <div
+        class="absolute top-1/2 left-0 bg-gradient-to-r from-pink-500 to-purple-500 transition-[height] transform -translate-y-1/2"
+        style="height: 0.25rem; box-shadow: 0 0 0.625rem rgba(236, 72, 153, 0.5);"
+        :style="{ width: `${progressPercentage}%` }">
+        <!-- Throbber/Handle with Glow -->
+        <div
+          class="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 bg-white rounded-full opacity-100 transition-all scale-100 group-hover:scale-150"
+          style="width: 1rem; height: 1rem; box-shadow: 0 0 0.5rem 0.125rem rgba(236, 72, 153, 0.6), 0 0 1rem 0.25rem rgba(236, 72, 153, 0.4), 0 0 1.5rem 0.375rem rgba(236, 72, 153, 0.2), 0 0 2rem 0.5rem rgba(236, 72, 153, 0.1);">
+        </div>
+      </div>
+
+      <!-- Timestamp Display (Current / Total) -->
+      <div
+        class="absolute top-0 transform -translate-y-full bg-gray-900/90 backdrop-blur-md rounded-full text-white font-mono shadow-lg border border-gray-700"
+        style="right: 1rem; margin-bottom: 0.5rem; padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+        {{ formatTime(playbackTime) }} / {{ formatTime(totalDuration) }}
+      </div>
+
+      <!-- Hover Tooltip -->
+      <Transition
+        enter-active-class="transition-all duration-150 ease-out"
+        enter-from-class="opacity-0 scale-90 translate-y-1"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition-all duration-100 ease-in"
+        leave-from-class="opacity-100 scale-100 translate-y-0"
+        leave-to-class="opacity-0 scale-90 translate-y-1">
+        <div
+          v-if="progressBarHoverTime !== null"
+          class="absolute bottom-full bg-gray-900/95 backdrop-blur-md rounded-lg text-white font-mono shadow-xl border border-pink-500/50 pointer-events-none"
+          style="margin-bottom: 0.5rem; padding: 0.375rem 0.625rem; font-size: 0.75rem;"
+          :style="{ left: `${progressBarHoverX}px`, transform: 'translateX(-50%)' }">
+          {{ formatTime(progressBarHoverTime) }}
+          <!-- Arrow -->
+          <div class="absolute top-full left-1/2 transform -translate-x-1/2" style="margin-top: -1px;">
+            <div class="w-0 h-0 border-transparent border-t-pink-500/50" style="border-left-width: 0.25rem; border-right-width: 0.25rem; border-top-width: 0.25rem;"></div>
+          </div>
+        </div>
+      </Transition>
+    </div>
 
     <!-- Debug Text -->
     <div v-if="debugText && !isPlaying"
@@ -71,8 +237,25 @@
       <i class="fab fa-github" style="font-size: 2.2vh;"></i>
     </a>
 
-    <!-- Rotate Prompt Component -->
-    <RotatePrompt :show="showRotatePrompt" />
+    <!-- Rotate Phone Prompt (Portrait Mode on Mobile) -->
+    <Transition
+      enter-active-class="transition-all duration-500 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition-all duration-300 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95">
+      <div v-if="showRotatePrompt" class="fixed inset-0 bg-black/90 backdrop-blur-lg z-[100] flex items-center justify-center">
+        <div class="text-center" style="padding: 0 2rem;">
+          <div class="rotate-phone-icon" style="margin-bottom: 2rem;">
+            <i class="fas fa-mobile-screen text-white" style="font-size: 3.75rem;"></i>
+          </div>
+          <h2 class="font-bold text-white" style="font-size: 1.875rem; margin-bottom: 1rem;">Rotate Your Device</h2>
+          <p class="text-gray-300" style="font-size: 1.125rem; margin-bottom: 0.5rem;">Please rotate your phone to landscape mode</p>
+          <p class="text-gray-400" style="font-size: 0.875rem;">for the best piano experience</p>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -86,10 +269,6 @@
   animation: starsBgHueRotate 8s ease-in-out infinite;
   z-index: 0;
   overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: none;
 }
 
 .stars-box {
@@ -148,11 +327,6 @@
   mix-blend-mode: screen;
   top: 0;
   left: 0;
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-user-drag: none;
 }
 
 /* Horizon Glow */
@@ -269,9 +443,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { PianoEngine, toneAudio } from '@/services/pianoEngine';
 import { sheets, getSheetNames, reloadSheets, getAllSheets, loadDefaultSheets } from '@/data/sheets';
-import ControlPanel from './ControlPanel.vue';
-import ProgressBar from './ProgressBar.vue';
-import RotatePrompt from './RotatePrompt.vue';
+import MidiUploader from './MidiUploader.vue';
 import * as Tone from 'tone';
 import isMobileJS from 'ismobilejs';
 
@@ -305,6 +477,8 @@ const NOTE_DURATION_MULTIPLIER = 1.67; // Multiplier for note sustain duration (
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const waveCanvasRef = ref<HTMLCanvasElement | null>(null);
+const selectRef = ref<HTMLSelectElement | null>(null);
+const measureRef = ref<HTMLSpanElement | null>(null);
 const selectedSheetKey = ref<string>('unravel___animenz');
 const isPlaying = ref(false);
 const debugText = ref('PRESS PLAY BUTTON OR SPACE');
@@ -318,6 +492,8 @@ const playMode = ref<'single' | 'list' | 'random'>('single'); // Play mode: ÂçïÊ
 const canvasWidth = ref(window.innerWidth);
 const canvasHeight = ref(window.innerHeight);
 const pianoY = ref(0);
+const progressBarHoverTime = ref<number | null>(null); // Timestamp at hover position
+const progressBarHoverX = ref(0); // X position for hover tooltip
 
 const sheetKeys = ref(getSheetNames());
 const currentSheet = computed(() => {
@@ -336,6 +512,27 @@ const volumeIcon = computed(() => {
   if (volume.value < 0.33) return 'fa-volume-down';
   if (volume.value < 0.66) return 'fa-volume-down';
   return 'fa-volume-up';
+});
+
+const selectWidth = computed(() => {
+  if (!measureRef.value) return 120; // Default fallback width
+  
+  // Get the current selection's display text
+  const currentText = getAllSheets()[selectedSheetKey.value]?.name || selectedSheetKey.value;
+  
+  // Set the text in the hidden measure element
+  measureRef.value.textContent = currentText;
+  
+  // Get the measured width
+  const textWidth = measureRef.value.offsetWidth;
+  
+  // Add padding: left (0.5rem = 8px) + right (2rem = 32px for icon) + buffer (0.5rem = 8px)
+  // Using rem base of 16px as reference
+  const padding = 8 + 32 + 8;
+  
+  // Calculate total width with min and max constraints
+  const calculatedWidth = textWidth + padding;
+  return Math.max(80, Math.min(300, calculatedWidth));
 });
 
 const playModeIcon = computed(() => {
@@ -727,6 +924,30 @@ const formatTime = (ms: number): string => {
 
 const seek = (offsetMs: number) => {
   setTime(playbackTime.value + offsetMs);
+};
+
+const onProgressBarClick = (e: MouseEvent) => {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const width = rect.width;
+  const percentage = Math.max(0, Math.min(1, clickX / width));
+
+  const newTime = percentage * totalDuration.value;
+  setTime(newTime);
+};
+
+const onProgressBarHover = (e: MouseEvent) => {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const hoverX = e.clientX - rect.left;
+  const width = rect.width;
+  const percentage = Math.max(0, Math.min(1, hoverX / width));
+  
+  progressBarHoverTime.value = percentage * totalDuration.value;
+  progressBarHoverX.value = e.clientX;
+};
+
+const onProgressBarLeave = () => {
+  progressBarHoverTime.value = null;
 };
 
 const setTime = (timeMs: number) => {
@@ -1983,9 +2204,6 @@ onUnmounted(() => {
   height: 60px;
   z-index: 5555;
   pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
 }
 
 /* Animated Music Icon */
