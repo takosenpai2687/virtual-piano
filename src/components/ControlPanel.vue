@@ -94,8 +94,8 @@
       </div>
       
       <select ref="selectRef" :value="selectedSheetKey" @change="emit('sheetChange', ($event.target as HTMLSelectElement).value)"
-        class="sheet-selector bg-transparent text-gray-200 font-bold focus:outline-none cursor-pointer appearance-none hover:text-white active:scale-95"
-        style="font-size: 1.6vh; padding: 0.8vh 3vh 0.8vh 0.8vh; max-width: 25vw;"
+        class="sheet-selector bg-transparent text-gray-200 font-bold focus:outline-none cursor-pointer appearance-none hover:text-white active:scale-95 text-xs sm:text-sm md:text-base max-w-[25vw] sm:max-w-[35vw] md:max-w-[40vw] lg:max-w-md xl:max-w-lg 2xl:max-w-xl"
+        style="padding: 0.8vh 3vh 0.8vh 0.8vh;"
         :style="{ width: selectWidth + 'px' }">
         <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
           {{ allSheets[key]?.name || key }}
@@ -105,7 +105,7 @@
         <i class="fas fa-chevron-down" style="font-size: 1.4vh;"></i>
       </div>
       <!-- Hidden span for measuring text width -->
-      <span ref="measureRef" class="measure-text font-bold" style="font-size: 1.6vh;"></span>
+      <span ref="measureRef" class="measure-text font-bold text-xs sm:text-sm md:text-base"></span>
       
       <!-- Delete Button (only for custom sheets) -->
       <button
@@ -180,6 +180,16 @@ const emit = defineEmits<{
 const showVolumeSlider = ref(false);
 const selectRef = ref<HTMLSelectElement | null>(null);
 const measureRef = ref<HTMLSpanElement | null>(null);
+const screenWidth = ref(window.innerWidth);
+
+// Update screen width on resize
+onMounted(() => {
+  const handleResize = () => {
+    screenWidth.value = window.innerWidth;
+  };
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
+});
 
 const selectWidth = computed(() => {
   if (!measureRef.value) return 120;
@@ -187,9 +197,27 @@ const selectWidth = computed(() => {
   const currentText = props.allSheets[props.selectedSheetKey]?.name || props.selectedSheetKey;
   measureRef.value.textContent = currentText;
   const textWidth = measureRef.value.offsetWidth;
-  const padding = 8 + 32 + 8;
+  
+  // Get actual padding from select element if available
+  let padding = 16 + 48 + 16; // default fallback
+  if (selectRef.value) {
+    const computedStyle = window.getComputedStyle(selectRef.value);
+    const paddingLeft = parseFloat(computedStyle.paddingLeft);
+    const paddingRight = parseFloat(computedStyle.paddingRight);
+    padding = paddingLeft + paddingRight;
+  }
+  
   const calculatedWidth = textWidth + padding;
-  return Math.max(80, Math.min(300, calculatedWidth));
+  
+  // Responsive max width based on screen size (matching Tailwind breakpoints)
+  let maxWidth = screenWidth.value * 0.25; // 25vw for mobile
+  if (screenWidth.value >= 1536) maxWidth = 576; // 2xl: max-w-xl
+  else if (screenWidth.value >= 1280) maxWidth = 512; // xl: max-w-lg
+  else if (screenWidth.value >= 1024) maxWidth = 448; // lg: max-w-md
+  else if (screenWidth.value >= 768) maxWidth = screenWidth.value * 0.40; // md: 40vw
+  else if (screenWidth.value >= 640) maxWidth = screenWidth.value * 0.35; // sm: 35vw
+  
+  return Math.max(120, Math.min(maxWidth, calculatedWidth));
 });
 </script>
 
