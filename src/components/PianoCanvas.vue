@@ -118,7 +118,7 @@
         
         <select ref="selectRef" v-model="selectedSheetKey" @change="onSheetChange"
           class="sheet-selector bg-transparent text-gray-200 font-bold focus:outline-none cursor-pointer appearance-none hover:text-white active:scale-95"
-          style="font-size: 1.6vh; padding: 0.8vh 3vh 0.8vh 0.8vh; max-width: 25vw;"
+          style="font-size: 1.3vh; padding: 0.8vh 3vh 0.8vh 0.8vh; max-width: 15rem;"
           :style="{ width: selectWidth + 'px' }">
           <option v-for="key in sheetKeys" :key="key" :value="key" class="bg-gray-800 text-white">
             {{ getAllSheets()[key]?.name || key }}
