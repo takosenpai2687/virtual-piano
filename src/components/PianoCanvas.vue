@@ -561,18 +561,17 @@ const isMobile = computed(() => {
     maxTouchPoints: navigator.maxTouchPoints
   });
   
-  // Check if the smaller dimension (portrait or landscape) is less than 768px
   const minDimension = Math.min(canvasWidth.value, canvasHeight.value);
-  const isMobileSize = minDimension < 768;
   
-  // If screen is large (>=1024px in smallest dimension), always treat as desktop
-  // This ensures large touchscreen PCs and dev tools testing work correctly
-  if (minDimension >= 1024) {
+  // If screen is reasonably large (>=850px in smallest dimension), always treat as desktop
+  // This ensures MacBook 14" (1440x900) and similar laptops work correctly
+  if (minDimension >= 850) {
     return false;
   }
   
-  // Device is mobile if ismobilejs detects it as mobile OR small screen size
-  return mobileCheck.any || isMobileSize;
+  // For smaller screens, trust ismobilejs detection
+  // This correctly identifies phones and tablets while excluding small laptops
+  return mobileCheck.any;
 });
 
 const showRotatePrompt = computed(() => {
