@@ -26,8 +26,8 @@ export const getAvailableMidiFiles = (): string[] => {
 
 // Lazy load a single MIDI file by key
 export const loadSheetByKey = async (key: string): Promise<PianoSheet | null> => {
-  // If already loaded, return immediately
-  if (baseSheets[key]) {
+  // If already loaded (has notes), return immediately
+  if (baseSheets[key] && baseSheets[key].notes.length > 0) {
     return baseSheets[key];
   }
 
