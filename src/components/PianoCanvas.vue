@@ -404,15 +404,23 @@ const initSheet = async () => {
   if (currentSheet.value.notes.length === 0 && !selectedSheetKey.value.startsWith('custom_')) {
     console.log(`Lazy loading MIDI file: ${selectedSheetKey.value}`);
     const loadedSheet = await loadSheetByKey(selectedSheetKey.value);
-    if (loadedSheet && loadedSheet.notes.length > 0) {
-      // Update the sheet reference
-      reloadSheets();
-      // currentSheet will be re-computed with the loaded notes
+    if (!loadedSheet || loadedSheet.notes.length === 0) {
+      console.error(`Failed to load sheet: ${selectedSheetKey.value}`);
+      return;
     }
+    // After loading, reloadSheets to update the sheets object
+    reloadSheets();
+  }
+
+  // Re-fetch currentSheet after potential loading
+  const sheet = customSheet.value || getAllSheets()[selectedSheetKey.value];
+  if (!sheet || sheet.notes.length === 0) {
+    console.error(`Sheet not available after loading: ${selectedSheetKey.value}`);
+    return;
   }
 
   // Use original MIDI velocities without normalization
-  midiNotes.value = [...currentSheet.value.notes];
+  midiNotes.value = [...sheet.notes];
   // Sort notes by time
   midiNotes.value.sort((a, b) => a.TimeMs - b.TimeMs);
 
