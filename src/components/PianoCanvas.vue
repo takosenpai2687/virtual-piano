@@ -125,13 +125,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { PianoEngine, toneAudio } from '@/services/pianoEngine';
-import {
-  sheets,
-  getSheetNames,
-  reloadSheets,
-  getAllSheets,
-  loadDefaultSheets
-} from '@/data/sheets';
+import { sheets, getSheetNames, reloadSheets, getAllSheets, loadSheetByKey } from '@/data/sheets';
 import ControlPanel from './ControlPanel.vue';
 import ProgressBar from './ProgressBar.vue';
 import RotatePrompt from './RotatePrompt.vue';
@@ -248,14 +242,14 @@ let noteVisualization: ReturnType<typeof useNoteVisualization>;
 let keyboardInteraction: ReturnType<typeof useKeyboardInteraction>;
 let handleKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
-const onSheetChange = () => {
+const onSheetChange = async () => {
   customSheet.value = null;
   // Save the selected sheet to localStorage
   localStorage.setItem('selectedSheetKey', selectedSheetKey.value);
-  reset();
+  await reset();
 };
 
-const onNotesConverted = (notes: MidiNote[], fileName: string, autoPlay?: boolean) => {
+const onNotesConverted = async (notes: MidiNote[], fileName: string, autoPlay?: boolean) => {
   // Generate a unique key for this custom sheet
   const sheetKey = `custom_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
@@ -269,7 +263,7 @@ const onNotesConverted = (notes: MidiNote[], fileName: string, autoPlay?: boolea
   // Save the selected sheet to localStorage
   localStorage.setItem('selectedSheetKey', sheetKey);
 
-  reset();
+  await reset();
 
   // Auto-play if requested
   if (autoPlay) {
@@ -313,7 +307,7 @@ const isCustomSheet = (key: string): boolean => {
   return key.startsWith('custom_');
 };
 
-const deleteCustomSheet = () => {
+const deleteCustomSheet = async () => {
   const currentKey = selectedSheetKey.value;
 
   if (!isCustomSheet(currentKey)) {
@@ -352,7 +346,7 @@ const deleteCustomSheet = () => {
     // Save the new selection to localStorage
     localStorage.setItem('selectedSheetKey', nextKey);
     customSheet.value = null;
-    reset();
+    await reset();
   } catch (err) {
     console.error('Failed to delete sheet:', err);
   }
@@ -380,7 +374,7 @@ const calcTotalDuration = () => {
   totalDuration.value = lastNote.TimeMs + lastNote.DurationMs;
 };
 
-const reset = () => {
+const reset = async () => {
   isPlaying.value = false;
   playbackTime.value = 0;
   lastFrameTime = 0;
@@ -395,16 +389,27 @@ const reset = () => {
     keyboardInteraction.cleanup();
   }
 
-  initSheet();
+  await initSheet();
 };
 
-const stop = () => {
+const stop = async () => {
   pause();
-  reset();
+  await reset();
 };
 
-const initSheet = () => {
+const initSheet = async () => {
   if (!currentSheet.value) return;
+
+  // Lazy load MIDI notes if not already loaded (empty notes array means not loaded yet)
+  if (currentSheet.value.notes.length === 0 && !selectedSheetKey.value.startsWith('custom_')) {
+    console.log(`Lazy loading MIDI file: ${selectedSheetKey.value}`);
+    const loadedSheet = await loadSheetByKey(selectedSheetKey.value);
+    if (loadedSheet && loadedSheet.notes.length > 0) {
+      // Update the sheet reference
+      reloadSheets();
+      // currentSheet will be re-computed with the loaded notes
+    }
+  }
 
   // Use original MIDI velocities without normalization
   midiNotes.value = [...currentSheet.value.notes];
@@ -449,14 +454,14 @@ const getNextSheetKey = (): string | null => {
   return playbackControls.getNextSheetKey(sheetKeys.value, selectedSheetKey.value);
 };
 
-const previousSong = () => {
+const previousSong = async () => {
   // Pop from history to go to previous song
   if (songHistory.value.length > 0) {
     const previousKey = songHistory.value.pop()!;
     selectedSheetKey.value = previousKey;
     localStorage.setItem('selectedSheetKey', previousKey);
     customSheet.value = null;
-    reset();
+    await reset();
     setTimeout(() => play(), 100);
   } else {
     // If no history, go to first song in list
@@ -467,14 +472,14 @@ const previousSong = () => {
         selectedSheetKey.value = firstKey;
         localStorage.setItem('selectedSheetKey', firstKey);
         customSheet.value = null;
-        reset();
+        await reset();
         setTimeout(() => play(), 100);
       }
     }
   }
 };
 
-const nextSong = () => {
+const nextSong = async () => {
   // Manual next button should always go to next song in list, regardless of play mode
   const allKeys = sheetKeys.value;
   if (allKeys.length === 0) return;
@@ -491,12 +496,12 @@ const nextSong = () => {
     selectedSheetKey.value = nextKey;
     localStorage.setItem('selectedSheetKey', nextKey);
     customSheet.value = null;
-    reset();
+    await reset();
     setTimeout(() => play(), 100);
   }
 };
 
-const playNextSong = () => {
+const playNextSong = async () => {
   // Auto-play next song respects the play mode
   const nextKey = getNextSheetKey();
   if (!nextKey) return;
@@ -509,7 +514,7 @@ const playNextSong = () => {
     selectedSheetKey.value = nextKey;
     localStorage.setItem('selectedSheetKey', nextKey);
     customSheet.value = null;
-    reset();
+    await reset();
     setTimeout(() => play(), 100);
   }
 };
@@ -1044,8 +1049,7 @@ onMounted(async () => {
 
   await engine.initSounds();
 
-  // Load default MIDI sheets from public folder
-  await loadDefaultSheets();
+  // Initialize sheet list (metadata only, no MIDI loading yet)
   reloadSheets();
   sheetKeys.value = getSheetNames();
 
@@ -1080,7 +1084,7 @@ onMounted(async () => {
 
   onResize();
   loadSavedSelection();
-  initSheet();
+  await initSheet();
   backgroundEffects.initFloatingParticles();
   initWaveCanvas(pianoY.value);
   animateWaves();
