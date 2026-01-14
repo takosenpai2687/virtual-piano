@@ -48,23 +48,23 @@ export class ToneAudioService {
 
   private startSilentOscillator(): void {
     if (this.silentOscillator || !this.audioContextReady) return;
-    
+
     try {
       // Create a silent oscillator to keep audio context alive
       const context = Tone.context.rawContext as AudioContext;
       this.silentOscillator = context.createOscillator();
       const gainNode = context.createGain();
-      
+
       // Set volume to essentially zero but not completely muted
       gainNode.gain.setValueAtTime(0.001, context.currentTime);
-      
+
       this.silentOscillator.connect(gainNode);
       gainNode.connect(context.destination);
-      
+
       // Start the oscillator
       this.silentOscillator.frequency.setValueAtTime(20, context.currentTime); // Very low frequency
       this.silentOscillator.start();
-      
+
       console.log('Silent oscillator started to maintain audio context');
     } catch (error) {
       console.warn('Failed to start silent oscillator:', error);
@@ -107,7 +107,7 @@ export class ToneAudioService {
           F5: '77.mp3',
           G5: '79.mp3',
           C6: '84.mp3',
-          C7: '96.mp3',
+          C7: '96.mp3'
         },
         attack: 0.16,
         release: 1,
@@ -115,7 +115,7 @@ export class ToneAudioService {
         baseUrl: 'https://assets.onlinepianist.com/player/sounds/',
         onload: () => {
           console.log('Salamander Grand Piano samples loaded successfully');
-        },
+        }
       }).toDestination();
 
       // No reverb needed - Salamander samples already have natural room sound
@@ -138,12 +138,12 @@ export class ToneAudioService {
         console.warn('Failed to start audio context:', error);
       }
     }
-    
+
     // Force resume if suspended (e.g., tab was inactive)
     if (Tone.context.state === 'suspended') {
       await Tone.context.resume();
     }
-    
+
     // Set ready flag if context is running
     if (Tone.context.state === 'running') {
       this.audioContextReady = true;
@@ -162,21 +162,21 @@ export class ToneAudioService {
 
     // Try to resume if context is suspended
     if (Tone.context.state === 'suspended') {
-      Tone.context.resume().catch(err => 
-        console.warn('Failed to resume suspended context:', err)
-      );
+      Tone.context
+        .resume()
+        .catch((err) => console.warn('Failed to resume suspended context:', err));
       return; // Skip this note, will work on next one
     }
 
     const note = this.midiToNote(midiNote);
-    
+
     // Convert MIDI velocity (0-127) to gain (0-1)
     const gain = velocity / 127;
 
     try {
       // Trigger attack with velocity
       this.sampler.triggerAttack(note, Tone.now(), gain);
-      
+
       // Track active note
       this.activeNotes.set(midiNote, { note, time: Tone.now() });
     } catch (error) {

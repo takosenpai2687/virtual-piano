@@ -31,9 +31,8 @@ export function useKeyboardInteraction(
     const y = clientY - rect.top;
 
     let midiKey: number | null | undefined = null;
-    const blackKey = keyboardRects.value.find(r => r.isBlack &&
-      x >= r.x && x <= r.x + r.width &&
-      y >= r.y && y <= r.y + r.height
+    const blackKey = keyboardRects.value.find(
+      (r) => r.isBlack && x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height
     );
 
     if (blackKey) {
@@ -75,9 +74,8 @@ export function useKeyboardInteraction(
     const y = clientY - rect.top;
 
     let midiKey: number | null | undefined = null;
-    const blackKey = keyboardRects.value.find(r => r.isBlack &&
-      x >= r.x && x <= r.x + r.width &&
-      y >= r.y && y <= r.y + r.height
+    const blackKey = keyboardRects.value.find(
+      (r) => r.isBlack && x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height
     );
 
     if (blackKey) {
@@ -91,27 +89,27 @@ export function useKeyboardInteraction(
     if (mousePressedKey.value !== null && midiKey && midiKey !== mousePressedKey.value) {
       // Remove visual immediately for the previous key
       engine.removeCurrentKeyVisual(mousePressedKey.value);
-      
+
       // Schedule delayed audio release for the previous key with sustain
       const releaseDelay = 200;
       const keyToRelease = mousePressedKey.value;
-      
+
       // Clear any existing timeout for this key
       if (manualReleaseTimeouts.has(keyToRelease)) {
         clearTimeout(manualReleaseTimeouts.get(keyToRelease)!);
       }
-      
+
       const timeout = setTimeout(() => {
         toneAudio.releaseNote(keyToRelease);
         manualReleaseTimeouts.delete(keyToRelease);
       }, releaseDelay);
-      
+
       manualReleaseTimeouts.set(keyToRelease, timeout);
-      
+
       // Start new key immediately
       mousePressedKey.value = midiKey;
       engine.addCurrentKey(midiKey);
-      engine.getCurrentKeys().forEach(mk => engine.playSound(mk, 127));
+      engine.getCurrentKeys().forEach((mk) => engine.playSound(mk, 127));
       onKeyPress(midiKey);
     }
   };
@@ -120,28 +118,33 @@ export function useKeyboardInteraction(
     if (mousePressedKey.value !== null) {
       // Remove visual immediately for instant feedback
       engine.removeCurrentKeyVisual(mousePressedKey.value);
-      
+
       // Apply sustain delay for audio only
       const releaseDelay = 300 * NOTE_DURATION_MULTIPLIER;
-      
+
       // Clear any existing timeout for this key
       if (manualReleaseTimeouts.has(mousePressedKey.value)) {
         clearTimeout(manualReleaseTimeouts.get(mousePressedKey.value)!);
       }
-      
+
       const keyToRelease = mousePressedKey.value;
       const timeout = setTimeout(() => {
         toneAudio.releaseNote(keyToRelease);
         manualReleaseTimeouts.delete(keyToRelease);
       }, releaseDelay);
-      
+
       manualReleaseTimeouts.set(mousePressedKey.value, timeout);
       mousePressedKey.value = null;
     }
     isMouseDown.value = false;
   };
 
-  const onKeyDown = (e: KeyboardEvent, onSpacePress: () => void, onArrowLeft: () => void, onArrowRight: () => void) => {
+  const onKeyDown = (
+    e: KeyboardEvent,
+    onSpacePress: () => void,
+    onArrowLeft: () => void,
+    onArrowRight: () => void
+  ) => {
     if (e.code === 'Space') {
       e.preventDefault();
       onSpacePress();
@@ -185,22 +188,22 @@ export function useKeyboardInteraction(
 
     // Apply sustain delay for audio only
     const releaseDelay = 300 * NOTE_DURATION_MULTIPLIER;
-    
+
     // Clear any existing timeout for this key
     if (manualReleaseTimeouts.has(midiKeyReleased)) {
       clearTimeout(manualReleaseTimeouts.get(midiKeyReleased)!);
     }
-    
+
     const timeout = setTimeout(() => {
       toneAudio.releaseNote(midiKeyReleased);
       manualReleaseTimeouts.delete(midiKeyReleased);
     }, releaseDelay);
-    
+
     manualReleaseTimeouts.set(midiKeyReleased, timeout);
   };
 
   const cleanup = () => {
-    manualReleaseTimeouts.forEach(timeout => clearTimeout(timeout));
+    manualReleaseTimeouts.forEach((timeout) => clearTimeout(timeout));
     manualReleaseTimeouts.clear();
   };
 

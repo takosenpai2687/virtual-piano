@@ -32,19 +32,27 @@ export function usePlaybackControls() {
 
   const playModeIcon = computed(() => {
     switch (playMode.value) {
-      case 'single': return { type: 'svg', icon: 'single-loop' };
-      case 'list': return { type: 'fa', icon: 'fa-sync-alt' };
-      case 'random': return { type: 'fa', icon: 'fa-random' };
-      default: return { type: 'svg', icon: 'single-loop' };
+      case 'single':
+        return { type: 'svg', icon: 'single-loop' };
+      case 'list':
+        return { type: 'fa', icon: 'fa-sync-alt' };
+      case 'random':
+        return { type: 'fa', icon: 'fa-random' };
+      default:
+        return { type: 'svg', icon: 'single-loop' };
     }
   });
 
   const playModeTitle = computed(() => {
     switch (playMode.value) {
-      case 'single': return '单曲循环 (Single Loop)';
-      case 'list': return '列表循环 (List Loop)';
-      case 'random': return '随机 (Random)';
-      default: return '单曲循环';
+      case 'single':
+        return '单曲循环 (Single Loop)';
+      case 'list':
+        return '列表循环 (List Loop)';
+      case 'random':
+        return '随机 (Random)';
+      default:
+        return '单曲循环';
     }
   });
 
@@ -109,16 +117,16 @@ export function usePlaybackControls() {
       totalDuration.value = 1000;
       return;
     }
-    
+
     const lastNote = notes[notes.length - 1];
     totalDuration.value = lastNote.TimeMs + lastNote.DurationMs + 2000; // Add 2s buffer
   };
 
   const getNextSheetKey = (sheetKeys: string[], currentKey: string): string | null => {
     if (sheetKeys.length === 0) return null;
-    
+
     const currentIndex = sheetKeys.indexOf(currentKey);
-    
+
     if (playMode.value === 'single') {
       return currentKey;
     } else if (playMode.value === 'list') {
@@ -132,7 +140,7 @@ export function usePlaybackControls() {
       } while (randomIndex === currentIndex && sheetKeys.length > 1);
       return sheetKeys[randomIndex];
     }
-    
+
     return null;
   };
 
@@ -157,13 +165,13 @@ export function usePlaybackControls() {
     volume,
     playMode,
     showVolumeSlider,
-    
+
     // Computed
     progressPercentage,
     volumeIcon,
     playModeIcon,
     playModeTitle,
-    
+
     // Methods
     play,
     pause,

@@ -2,7 +2,11 @@ import type { PianoSheet, MidiNote } from '@/types/piano';
 import { MidiConverter } from '@/services/midiConverter';
 
 // Automatically discover all MIDI files in the public folder using Vite's glob import
-const midiFiles = import.meta.glob('/public/*.mid', { eager: false, query: '?url', import: 'default' });
+const midiFiles = import.meta.glob('/public/*.mid', {
+  eager: false,
+  query: '?url',
+  import: 'default'
+});
 
 let baseSheets: Record<string, PianoSheet> = {};
 let sheetsLoaded = false;
@@ -10,37 +14,36 @@ let sheetsLoaded = false;
 // Load MIDI files from public folder
 export const loadDefaultSheets = async (): Promise<void> => {
   if (sheetsLoaded) return;
-  
+
   const loadedSheets: Record<string, PianoSheet> = {};
-  
+
   // Get all MIDI file paths
   const midiFilePaths = Object.keys(midiFiles);
-  
+
   for (const filePath of midiFilePaths) {
     try {
       // Extract filename from path
       const fileName = filePath.split('/').pop() || '';
-      
+
       // Fetch the MIDI file
       const response = await fetch(`/${fileName}`);
       if (!response.ok) {
         console.warn(`Failed to load ${fileName}`);
         continue;
       }
-      
+
       const buffer = await response.arrayBuffer();
       const notes = await MidiConverter.parseMidiFile(buffer);
-      
+
       // Generate a key from the filename (remove extension, replace spaces/special chars)
       const key = fileName
         .replace(/\.(mid|midi)$/i, '')
-        .replace(/[\s.-]/g, '_')  // Replace spaces, dots, and hyphens with underscores
+        .replace(/[\s.-]/g, '_') // Replace spaces, dots, and hyphens with underscores
         .toLowerCase();
-      
+
       // Extract display name (remove extension only, keep full name)
-      const name = fileName
-        .replace(/\.(mid|midi)$/i, '');
-      
+      const name = fileName.replace(/\.(mid|midi)$/i, '');
+
       loadedSheets[key] = {
         name,
         notes
@@ -49,10 +52,10 @@ export const loadDefaultSheets = async (): Promise<void> => {
       console.error(`Failed to parse MIDI file ${filePath}:`, err);
     }
   }
-  
+
   baseSheets = loadedSheets;
   sheetsLoaded = true;
-  
+
   // Update the sheets object after loading
   sheets = getAllSheets();
 };

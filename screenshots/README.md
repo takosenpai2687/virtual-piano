@@ -31,11 +31,14 @@ This folder contains screenshots for the project README.
 
 ```markdown
 ### Interface
+
 ![Main Interface](screenshots/demo.png)
 
 ### Volume Control
+
 ![Volume Control](screenshots/volume-control.png)
 
 ### Playing Mode
+
 ![Playing Mode](screenshots/playing.png)
 ```

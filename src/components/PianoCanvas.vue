@@ -7,14 +7,17 @@
     <canvas v-if="!isLandscapeMobile" ref="waveCanvasRef" class="wave-border-canvas"></canvas>
 
     <!-- Canvas for Piano -->
-    <canvas ref="canvasRef" class="absolute w-full h-full z-10" 
-      @mousedown="keyboardInteraction?.onMouseDown" 
+    <canvas
+      ref="canvasRef"
+      class="absolute w-full h-full z-10"
+      @mousedown="keyboardInteraction?.onMouseDown"
       @mouseup="keyboardInteraction?.onMouseUp"
-      @mousemove="keyboardInteraction?.onMouseMove" 
-      @touchstart="keyboardInteraction?.onMouseDown" 
-      @touchend="keyboardInteraction?.onMouseUp" 
+      @mousemove="keyboardInteraction?.onMouseMove"
+      @touchstart="keyboardInteraction?.onMouseDown"
+      @touchend="keyboardInteraction?.onMouseUp"
       @touchmove="keyboardInteraction?.onMouseMove"
-      @contextmenu.prevent />
+      @contextmenu.prevent
+    />
 
     <!-- Control Panel Component -->
     <ControlPanel
@@ -32,14 +35,23 @@
       @next-song="nextSong"
       @toggle-play-pause="togglePlayPause"
       @cycle-speed="cycleSpeed"
-      @update-volume="(v) => { volume = v; updateVolume(); }"
-      @sheet-change="(key) => { selectedSheetKey = key; onSheetChange(); }"
+      @update-volume="
+        (v) => {
+          volume = v;
+          updateVolume();
+        }
+      "
+      @sheet-change="
+        (key) => {
+          selectedSheetKey = key;
+          onSheetChange();
+        }
+      "
       @delete-sheet="deleteCustomSheet"
       @cycle-play-mode="cyclePlayMode"
       @notes-converted="onNotesConverted"
       @sheet-saved="onSheetSaved"
     />
-
 
     <!-- Progress Bar Component -->
     <ProgressBar
@@ -51,17 +63,23 @@
     />
 
     <!-- Debug Text -->
-    <div v-if="debugText && !isPlaying"
+    <div
+      v-if="debugText && !isPlaying"
       class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white/20 font-bold z-0 pointer-events-none select-none tracking-widest whitespace-nowrap"
-      style="font-size: 2.5rem;">
+      style="font-size: 2.5rem"
+    >
       {{ debugText }}
     </div>
 
     <!-- GitHub Link -->
-    <a href="https://github.com/takosenpai2687/virtual-piano" target="_blank" rel="noopener noreferrer"
+    <a
+      href="https://github.com/takosenpai2687/virtual-piano"
+      target="_blank"
+      rel="noopener noreferrer"
       class="github-link fixed flex items-center justify-center rounded-full bg-gray-900/60 backdrop-blur-md border border-gray-700 text-gray-300 hover:text-white transition-all z-50 group"
-      style="top: 1vh; right: 1vh; width: 5vh; height: 5vh; min-width: 40px; min-height: 40px;">
-      <i class="fab fa-github" style="font-size: 2.2vh;"></i>
+      style="top: 1vh; right: 1vh; width: 5vh; height: 5vh; min-width: 40px; min-height: 40px"
+    >
+      <i class="fab fa-github" style="font-size: 2.2vh"></i>
     </a>
 
     <!-- Rotate Prompt Component -->
@@ -78,9 +96,10 @@
 .github-link:hover {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(16px) brightness(1.2);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4),
-              0 0 40px rgba(255, 255, 255, 0.2),
-              inset 0 0 20px rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 20px rgba(255, 255, 255, 0.4),
+    0 0 40px rgba(255, 255, 255, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
   transform: scale(1.05);
   border-color: rgba(255, 255, 255, 0.4);
 }
@@ -91,7 +110,8 @@
 
 /* Play Mode Icon Animation */
 @keyframes playModeIconPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -105,7 +125,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { PianoEngine, toneAudio } from '@/services/pianoEngine';
-import { sheets, getSheetNames, reloadSheets, getAllSheets, loadDefaultSheets } from '@/data/sheets';
+import {
+  sheets,
+  getSheetNames,
+  reloadSheets,
+  getAllSheets,
+  loadDefaultSheets
+} from '@/data/sheets';
 import ControlPanel from './ControlPanel.vue';
 import ProgressBar from './ProgressBar.vue';
 import RotatePrompt from './RotatePrompt.vue';
@@ -195,7 +221,8 @@ const {
 
 // Initialize wave animation composable
 const waveAnimation = useWaveAnimation(WAVE_COLOR);
-const { waveCanvasRef, initWaveCanvas, animateWaves, stopWaveAnimation, repositionWave } = waveAnimation;
+const { waveCanvasRef, initWaveCanvas, animateWaves, stopWaveAnimation, repositionWave } =
+  waveAnimation;
 
 const sheetKeys = ref(getSheetNames());
 const currentSheet = computed(() => {
@@ -231,19 +258,19 @@ const onSheetChange = () => {
 const onNotesConverted = (notes: MidiNote[], fileName: string, autoPlay?: boolean) => {
   // Generate a unique key for this custom sheet
   const sheetKey = `custom_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  
+
   customSheet.value = {
     name: fileName,
     notes: notes
   };
-  
+
   // Update selected sheet key to show it in the dropdown
   selectedSheetKey.value = sheetKey;
   // Save the selected sheet to localStorage
   localStorage.setItem('selectedSheetKey', sheetKey);
-  
+
   reset();
-  
+
   // Auto-play if requested
   if (autoPlay) {
     // Small delay to ensure everything is initialized
@@ -288,30 +315,30 @@ const isCustomSheet = (key: string): boolean => {
 
 const deleteCustomSheet = () => {
   const currentKey = selectedSheetKey.value;
-  
+
   if (!isCustomSheet(currentKey)) {
     return;
   }
-  
+
   try {
     // Get existing saved sheets from localStorage
     const savedSheetsJson = localStorage.getItem('customSheets');
     const savedSheets = savedSheetsJson ? JSON.parse(savedSheetsJson) : {};
-    
+
     // Delete the sheet
     delete savedSheets[currentKey];
-    
+
     // Save back to localStorage
     localStorage.setItem('customSheets', JSON.stringify(savedSheets));
-    
+
     // Reload sheets
     reloadSheets();
     sheetKeys.value = getSheetNames();
-    
+
     // Find the next sheet to switch to
     const currentIndex = sheetKeys.value.indexOf(currentKey);
     let nextKey: string;
-    
+
     if (currentIndex < sheetKeys.value.length - 1) {
       // Switch to the next sheet
       nextKey = sheetKeys.value[currentIndex + 1];
@@ -319,7 +346,7 @@ const deleteCustomSheet = () => {
       // We're at the end, switch to the first sheet
       nextKey = sheetKeys.value[0];
     }
-    
+
     // Update selection and reset
     selectedSheetKey.value = nextKey;
     // Save the new selection to localStorage
@@ -338,7 +365,7 @@ const updateVolume = () => {
   if (volume.value === 0) {
     Tone.Destination.volume.value = -Infinity;
   } else {
-    const dbValue = -60 + (volume.value * 60);
+    const dbValue = -60 + volume.value * 60;
     Tone.Destination.volume.value = dbValue;
   }
 };
@@ -360,9 +387,9 @@ const reset = () => {
   engine.clearCurrentKeys();
 
   // Clear all active note timeouts
-  activeNoteTimeouts.forEach(timeout => clearTimeout(timeout));
+  activeNoteTimeouts.forEach((timeout) => clearTimeout(timeout));
   activeNoteTimeouts.clear();
-  
+
   // Clear keyboard interaction timeouts
   if (keyboardInteraction) {
     keyboardInteraction.cleanup();
@@ -404,7 +431,7 @@ const play = async () => {
     console.error('Failed to start audio context:', err);
     return; // Don't start playback if audio failed
   }
-  
+
   if (playbackTime.value >= totalDuration.value) {
     playbackTime.value = 0;
   }
@@ -451,11 +478,11 @@ const nextSong = () => {
   // Manual next button should always go to next song in list, regardless of play mode
   const allKeys = sheetKeys.value;
   if (allKeys.length === 0) return;
-  
+
   const currentIndex = allKeys.indexOf(selectedSheetKey.value);
   const nextIndex = (currentIndex + 1) % allKeys.length;
   const nextKey = allKeys[nextIndex];
-  
+
   if (nextKey === selectedSheetKey.value) {
     playbackTime.value = 0;
     play();
@@ -473,7 +500,7 @@ const playNextSong = () => {
   // Auto-play next song respects the play mode
   const nextKey = getNextSheetKey();
   if (!nextKey) return;
-  
+
   if (nextKey === selectedSheetKey.value) {
     playbackTime.value = 0;
     play();
@@ -532,14 +559,14 @@ const playNotesInTimeRange = (fromTime: number, toTime: number) => {
 
 const triggerManualPlayEffects = (midiKey: number) => {
   if (!particleEffects) return;
-  
+
   const keyIndex = midiKey - 36;
   const keyRect = keyboardRects.value[keyIndex];
   if (!keyRect) return;
 
   const color = COLOR_WHEEL[midiKey % COLOR_WHEEL.length];
   const bubbleWidth = noteVisualization.cachedBubbleWidth.value;
-  
+
   const x = keyRect.x + keyRect.width / 2;
   const y = pianoY.value;
 
@@ -555,10 +582,10 @@ const triggerManualPlayEffects = (midiKey: number) => {
 
   // Add key glow effect
   particleEffects.addKeyGlowEffect(keyIndex, color);
-  
+
   // Trigger music reactive effects
   backgroundEffects.triggerMusicReaction(color);
-  
+
   // Create background wave occasionally
   if (Math.random() > 0.7) {
     backgroundEffects.createBackgroundWave(x, y - 50, color);
@@ -576,7 +603,7 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   let offsetY = 0;
   let widthReduction = 0;
   let heightReduction = 0;
-  
+
   if (isKeyDown) {
     // Make key appear pressed in
     offsetY = r.height * 0.03; // Push down slightly
@@ -596,7 +623,12 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
 
   if (isKeyDown) {
     // Use darker gradient for pressed key
-    const gradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + adjustedRect.height);
+    const gradient = ctx.createLinearGradient(
+      adjustedRect.x,
+      adjustedRect.y,
+      adjustedRect.x,
+      adjustedRect.y + adjustedRect.height
+    );
     gradient.addColorStop(0, PIANO_KEYDOWN_COLOR_TOP);
     gradient.addColorStop(1, PIANO_KEYDOWN_COLOR_BOT);
     ctx.fillStyle = gradient;
@@ -628,84 +660,162 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
   }
 
   if (r.isBlack) {
-    drawRoundRect(ctx, adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height, 5, true, true);
-    
+    drawRoundRect(
+      ctx,
+      adjustedRect.x,
+      adjustedRect.y,
+      adjustedRect.width,
+      adjustedRect.height,
+      5,
+      true,
+      true
+    );
+
     // Add soft inset shadow on all four sides for pressed black keys
     if (isKeyDown) {
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      
+
       const shadowSize = 8;
-      
+
       // Top shadow
-      const topGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + shadowSize);
+      const topGradient = ctx.createLinearGradient(
+        adjustedRect.x,
+        adjustedRect.y,
+        adjustedRect.x,
+        adjustedRect.y + shadowSize
+      );
       topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
       topGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = topGradient;
-      drawRoundRect(ctx, adjustedRect.x, adjustedRect.y, adjustedRect.width, shadowSize, 5, true, false);
-      
+      drawRoundRect(
+        ctx,
+        adjustedRect.x,
+        adjustedRect.y,
+        adjustedRect.width,
+        shadowSize,
+        5,
+        true,
+        false
+      );
+
       // Left shadow
-      const leftGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x + shadowSize, adjustedRect.y);
+      const leftGradient = ctx.createLinearGradient(
+        adjustedRect.x,
+        adjustedRect.y,
+        adjustedRect.x + shadowSize,
+        adjustedRect.y
+      );
       leftGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
       leftGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = leftGradient;
       ctx.fillRect(adjustedRect.x, adjustedRect.y, shadowSize, adjustedRect.height);
-      
+
       // Right shadow
-      const rightGradient = ctx.createLinearGradient(adjustedRect.x + adjustedRect.width, adjustedRect.y, adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y);
+      const rightGradient = ctx.createLinearGradient(
+        adjustedRect.x + adjustedRect.width,
+        adjustedRect.y,
+        adjustedRect.x + adjustedRect.width - shadowSize,
+        adjustedRect.y
+      );
       rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
       rightGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = rightGradient;
-      ctx.fillRect(adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y, shadowSize, adjustedRect.height);
-      
+      ctx.fillRect(
+        adjustedRect.x + adjustedRect.width - shadowSize,
+        adjustedRect.y,
+        shadowSize,
+        adjustedRect.height
+      );
+
       // Bottom shadow
-      const bottomGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y + adjustedRect.height, adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize);
+      const bottomGradient = ctx.createLinearGradient(
+        adjustedRect.x,
+        adjustedRect.y + adjustedRect.height,
+        adjustedRect.x,
+        adjustedRect.y + adjustedRect.height - shadowSize
+      );
       bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
       bottomGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = bottomGradient;
-      ctx.fillRect(adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize, adjustedRect.width, shadowSize);
-      
+      ctx.fillRect(
+        adjustedRect.x,
+        adjustedRect.y + adjustedRect.height - shadowSize,
+        adjustedRect.width,
+        shadowSize
+      );
+
       ctx.restore();
     }
   } else {
     ctx.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
     ctx.strokeRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, adjustedRect.height);
-    
+
     // Add soft inset shadow on all four sides for pressed white keys
     if (isKeyDown) {
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      
+
       const shadowSize = 10;
-      
+
       // Top shadow
-      const topGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x, adjustedRect.y + shadowSize);
+      const topGradient = ctx.createLinearGradient(
+        adjustedRect.x,
+        adjustedRect.y,
+        adjustedRect.x,
+        adjustedRect.y + shadowSize
+      );
       topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
       topGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = topGradient;
       ctx.fillRect(adjustedRect.x, adjustedRect.y, adjustedRect.width, shadowSize);
-      
+
       // Left shadow
-      const leftGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y, adjustedRect.x + shadowSize, adjustedRect.y);
+      const leftGradient = ctx.createLinearGradient(
+        adjustedRect.x,
+        adjustedRect.y,
+        adjustedRect.x + shadowSize,
+        adjustedRect.y
+      );
       leftGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
       leftGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = leftGradient;
       ctx.fillRect(adjustedRect.x, adjustedRect.y, shadowSize, adjustedRect.height);
-      
+
       // Right shadow
-      const rightGradient = ctx.createLinearGradient(adjustedRect.x + adjustedRect.width, adjustedRect.y, adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y);
+      const rightGradient = ctx.createLinearGradient(
+        adjustedRect.x + adjustedRect.width,
+        adjustedRect.y,
+        adjustedRect.x + adjustedRect.width - shadowSize,
+        adjustedRect.y
+      );
       rightGradient.addColorStop(0, 'rgba(0, 0, 0, 0.3)');
       rightGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = rightGradient;
-      ctx.fillRect(adjustedRect.x + adjustedRect.width - shadowSize, adjustedRect.y, shadowSize, adjustedRect.height);
-      
+      ctx.fillRect(
+        adjustedRect.x + adjustedRect.width - shadowSize,
+        adjustedRect.y,
+        shadowSize,
+        adjustedRect.height
+      );
+
       // Bottom shadow
-      const bottomGradient = ctx.createLinearGradient(adjustedRect.x, adjustedRect.y + adjustedRect.height, adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize);
+      const bottomGradient = ctx.createLinearGradient(
+        adjustedRect.x,
+        adjustedRect.y + adjustedRect.height,
+        adjustedRect.x,
+        adjustedRect.y + adjustedRect.height - shadowSize
+      );
       bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0.2)');
       bottomGradient.addColorStop(1, 'transparent');
       ctx.fillStyle = bottomGradient;
-      ctx.fillRect(adjustedRect.x, adjustedRect.y + adjustedRect.height - shadowSize, adjustedRect.width, shadowSize);
-      
+      ctx.fillRect(
+        adjustedRect.x,
+        adjustedRect.y + adjustedRect.height - shadowSize,
+        adjustedRect.width,
+        shadowSize
+      );
+
       ctx.restore();
     }
   }
@@ -729,12 +839,12 @@ const drawKey = (r: KeyboardRect, currentKeysSet: Set<number>) => {
       const x = adjustedRect.x + adjustedRect.width / 2 - xOffset;
       const y = adjustedRect.y + adjustedRect.height * 0.28;
       ctx.fillText(r.text || '', x, y);
-      
+
       // Draw note name (A-G) at the bottom of white keys
       const midiKey = r.index + 36;
       const fullNote = midiKeyToNote[midiKey] || '';
       const noteLetter = fullNote.replace(/[0-9#]/g, ''); // Extract just the letter (A-G)
-      
+
       if (noteLetter) {
         ctx.font = `bold ${KB_FONT_SIZE + 2}px Verdana`;
         ctx.fillStyle = isKeyDown ? WHITE : '#855';
@@ -795,14 +905,14 @@ const update = () => {
 
   // Calculate bubbles based on current playback time
   const bubbles = noteVisualization.calculateBubbles();
-  
+
   // Check for bubble collisions and trigger effects
   const pianoYVal = canvasHeight.value * 0.73;
-  bubbles.forEach(bubble => {
+  bubbles.forEach((bubble) => {
     if (noteVisualization.checkBubbleCollision(bubble, pianoYVal)) {
       const color = bubble.color;
       const x = bubble.x + bubble.width / 2;
-      
+
       // Create smoke particles occasionally
       if (Math.random() > 0.7) {
         particleEffects.createSmokeParticles(x, pianoYVal, color);
@@ -816,14 +926,14 @@ const update = () => {
 
       // Add key glow effect
       particleEffects.addKeyGlowEffect(bubble.keyboardRectIndex, color);
-      
+
       // Create background wave occasionally
       if (Math.random() > 0.7) {
         backgroundEffects.createBackgroundWave(x, pianoYVal - 50, color);
       }
     }
   });
-  
+
   noteVisualization.drawBubbles(bubbles);
 
   // Update and draw particles
@@ -878,11 +988,11 @@ const update = () => {
   // Cache current keys as a Set for faster lookup
   const currentKeysSet = new Set(engine.getCurrentKeys());
 
-  keyboardRects.value.forEach(r => {
+  keyboardRects.value.forEach((r) => {
     if (!r.isBlack) drawKey(r, currentKeysSet);
   });
 
-  keyboardRects.value.forEach(r => {
+  keyboardRects.value.forEach((r) => {
     if (r.isBlack) drawKey(r, currentKeysSet);
   });
 
@@ -902,7 +1012,7 @@ const onResize = () => {
 
   // Cache key dimensions for performance
   cachedWhiteKeyWidth.value = keyboardRects.value[0]?.width || 0;
-  cachedBlackKeyWidth.value = keyboardRects.value.find(r => r.isBlack)?.width || 0;
+  cachedBlackKeyWidth.value = keyboardRects.value.find((r) => r.isBlack)?.width || 0;
 
   calcTotalDuration();
 
@@ -987,7 +1097,7 @@ onMounted(async () => {
       () => setTime(playbackTime.value + 10000)
     );
   };
-  
+
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('keyup', keyboardInteraction.onKeyUp);
   window.addEventListener('click', handleOutsideClick);
@@ -1022,7 +1132,7 @@ onUnmounted(() => {
   }
 
   // Clear all active note timeouts
-  activeNoteTimeouts.forEach(timeout => clearTimeout(timeout));
+  activeNoteTimeouts.forEach((timeout) => clearTimeout(timeout));
   activeNoteTimeouts.clear();
 
   // Cleanup keyboard interaction
@@ -1071,11 +1181,13 @@ onUnmounted(() => {
 
 /* Volume Slider Styling */
 .volume-slider {
-  background: linear-gradient(to top,
-      #10b981 0%,
-      #10b981 var(--volume-fill, 70%),
-      #374151 var(--volume-fill, 70%),
-      #374151 100%);
+  background: linear-gradient(
+    to top,
+    #10b981 0%,
+    #10b981 var(--volume-fill, 70%),
+    #374151 var(--volume-fill, 70%),
+    #374151 100%
+  );
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -1121,7 +1233,6 @@ onUnmounted(() => {
 }
 
 @keyframes pulse-subtle {
-
   0%,
   100% {
     opacity: 1;
@@ -1157,7 +1268,8 @@ onUnmounted(() => {
 }
 
 @keyframes music-bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) scale(1);
   }
   25% {
@@ -1172,21 +1284,27 @@ onUnmounted(() => {
 }
 
 @keyframes music-glow {
-  0%, 100% {
+  0%,
+  100% {
     filter: drop-shadow(0 0 0.1875rem rgba(236, 72, 153, 0.6));
   }
   50% {
-    filter: drop-shadow(0 0 0.5rem rgba(236, 72, 153, 0.9)) drop-shadow(0 0 0.75rem rgba(236, 72, 153, 0.5));
+    filter: drop-shadow(0 0 0.5rem rgba(236, 72, 153, 0.9))
+      drop-shadow(0 0 0.75rem rgba(236, 72, 153, 0.5));
   }
 }
 
 .music-icon-animated {
-  animation: music-bounce 1.5s ease-in-out infinite, music-glow 2s ease-in-out infinite;
+  animation:
+    music-bounce 1.5s ease-in-out infinite,
+    music-glow 2s ease-in-out infinite;
   display: inline-block;
 }
 
 .music-icon-container:hover .music-icon-animated {
-  animation: music-bounce 0.8s ease-in-out infinite, music-glow 1s ease-in-out infinite;
+  animation:
+    music-bounce 0.8s ease-in-out infinite,
+    music-glow 1s ease-in-out infinite;
   color: #f472b6;
 }
 </style>

@@ -55,7 +55,7 @@ export function useBackgroundEffects(
   };
 
   const updateFloatingParticles = (dt: number) => {
-    floatingParticles.value.forEach(particle => {
+    floatingParticles.value.forEach((particle) => {
       particle.x += particle.vx * dt * 0.05;
       particle.y += particle.vy * dt * 0.05;
 
@@ -81,7 +81,7 @@ export function useBackgroundEffects(
     if (!ctx.value || floatingParticles.value.length === 0) return;
 
     ctx.value.save();
-    floatingParticles.value.forEach(particle => {
+    floatingParticles.value.forEach((particle) => {
       ctx.value!.globalAlpha = particle.alpha;
       ctx.value!.fillStyle = particle.color;
       ctx.value!.shadowColor = particle.color;
@@ -106,7 +106,7 @@ export function useBackgroundEffects(
   };
 
   const updateBackgroundWaves = (dt: number) => {
-    backgroundWaves.value = backgroundWaves.value.filter(wave => {
+    backgroundWaves.value = backgroundWaves.value.filter((wave) => {
       wave.radius += wave.speed * dt * 0.1;
       wave.alpha = Math.max(0, 0.3 * (1 - wave.radius / wave.maxRadius));
       return wave.radius < wave.maxRadius;
@@ -118,7 +118,7 @@ export function useBackgroundEffects(
 
     ctx.value.save();
     ctx.value.lineWidth = 2;
-    backgroundWaves.value.forEach(wave => {
+    backgroundWaves.value.forEach((wave) => {
       ctx.value!.globalAlpha = wave.alpha;
       ctx.value!.strokeStyle = wave.color;
       ctx.value!.shadowColor = wave.color;
@@ -135,7 +135,7 @@ export function useBackgroundEffects(
     musicReactiveGlow.value.intensity = Math.max(0, musicReactiveGlow.value.intensity - dt * 0.005);
 
     // Reset particle sizes
-    floatingParticles.value.forEach(particle => {
+    floatingParticles.value.forEach((particle) => {
       if (particle.size > 4) {
         particle.size = Math.max(1, particle.size * 0.98);
       }
@@ -157,8 +157,14 @@ export function useBackgroundEffects(
 
     const alpha0 = (musicReactiveGlow.value.intensity * 40) | 0;
     const alpha1 = (musicReactiveGlow.value.intensity * 20) | 0;
-    gradient.addColorStop(0, `${musicReactiveGlow.value.color}${alpha0.toString(16).padStart(2, '0')}`);
-    gradient.addColorStop(0.5, `${musicReactiveGlow.value.color}${alpha1.toString(16).padStart(2, '0')}`);
+    gradient.addColorStop(
+      0,
+      `${musicReactiveGlow.value.color}${alpha0.toString(16).padStart(2, '0')}`
+    );
+    gradient.addColorStop(
+      0.5,
+      `${musicReactiveGlow.value.color}${alpha1.toString(16).padStart(2, '0')}`
+    );
     gradient.addColorStop(1, 'transparent');
 
     ctx.value.save();

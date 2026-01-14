@@ -14,6 +14,7 @@ An interactive web-based piano application with MIDI playback, real-time visual 
 ## ✨ Features
 
 ### 🎵 Audio & Playback
+
 - **Professional Piano Samples**: Salamander Grand Piano with 15 strategically sampled notes
 - **Tone.js Audio Engine**: Web Audio API-based synthesis with natural pitch-shifting
 - **Variable Speed Control**: 0.5x to 2x playback speed (0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x)
@@ -23,6 +24,7 @@ An interactive web-based piano application with MIDI playback, real-time visual 
 - **Background Playback**: Audio continues playing even when tab is inactive
 
 ### 🎨 Visual Effects
+
 - **Gradient Falling Notes**: Color-wheel gradient bubbles with lighten/darken effects
 - **Smoke Particles**: Subtle particle trails when notes hit keys
 - **Electric Sparks**: 8-12 spark particles with upward hemisphere trajectories
@@ -30,6 +32,7 @@ An interactive web-based piano application with MIDI playback, real-time visual 
 - **Real-time Rendering**: Canvas-based 60 FPS rendering
 
 ### 🎮 Controls & Interaction
+
 - **Dynamic Island Control Panel**: Apple-inspired floating control center
 - **Sheet Music Selection**: Pre-loaded songs with dropdown selector
 - **Custom MIDI Upload**: Upload your own MIDI files for playback
@@ -40,7 +43,9 @@ An interactive web-based piano application with MIDI playback, real-time visual 
 - **Mouse/Touch Support**: Click or tap piano keys directly
 
 ### 📊 Built-in Songs
+
 Default songs are loaded dynamically from MIDI files in the `public/` folder:
+
 - Attack on Titan (Animenz arrangement)
 - Gurenge (Animenz arrangement)
 - Unravel (Animenz arrangement)
@@ -50,6 +55,7 @@ To add more songs, simply place `.mid` or `.midi` files in the `public/` folder 
 ## 🏗️ Technical Architecture
 
 ### Frontend Stack
+
 - **Vue 3**: Composition API with `<script setup>` syntax
 - **TypeScript**: Fully typed codebase with strict mode
 - **Vite**: Lightning-fast build tool with HMR
@@ -57,6 +63,7 @@ To add more songs, simply place `.mid` or `.midi` files in the `public/` folder 
 - **Canvas API**: High-performance 2D rendering
 
 ### Audio System
+
 ```
 Tone.js Sampler Configuration:
 ├── 15 Sample Points (C1, F1, C2, F2, C3, F3, C4, E4, F4, A4, C5, F5, G5, C6, C7)
@@ -69,7 +76,9 @@ Tone.js Sampler Configuration:
 **Why only 15 samples?** Tone.js automatically pitch-shifts between sample points, providing natural sound across all 88 keys while keeping bundle size minimal.
 
 ### Timing System
+
 **Single Source of Truth Design:**
+
 ```typescript
 playbackTime (ref<number>)  // Current position in milliseconds
     ↓
@@ -79,12 +88,14 @@ playNotesInTimeRange()      // Triggers notes within time window
 ```
 
 This architecture enables:
+
 - ✅ Instant seeking without note stomping
 - ✅ Perfect sync between audio and visuals
 - ✅ Clean pause/resume/rewind functionality
 - ✅ No cumulative timing drift
 
 ### Project Structure
+
 ```
 src/
 ├── components/
@@ -111,7 +122,8 @@ public/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 
 ### Installation
@@ -135,11 +147,13 @@ npm run preview
 ```
 
 ### Development Server
+
 Opens at `http://localhost:5173` (or next available port)
 
 ## 🎹 How to Use
 
 ### Playing Songs
+
 1. Click the **sheet music dropdown** in the Dynamic Island
 2. Select a pre-loaded song or upload your own MIDI file
 3. Press the **Play button** ▶️
@@ -147,24 +161,27 @@ Opens at `http://localhost:5173` (or next available port)
 5. Click the **progress bar** to seek to any position
 
 ### Manual Playing
+
 - **Computer Keyboard**: Keys are mapped to piano notes
 - **Mouse**: Click piano keys directly
 - **Touch**: Tap keys on mobile devices
 
 ### Playback Controls
-| Button | Function |
-|--------|----------|
-| ▶️ | Play/Pause toggle |
-| ⏹️ | Stop (reset to beginning) |
-| ⏪ | Rewind 10 seconds |
-| ⏩ | Forward 10 seconds |
-| 🎵 | Select sheet music / Upload MIDI |
-| 🔊 | Volume control (0-100%) with animated slider |
-| 0.5x - 2x | Playback speed selector |
+
+| Button    | Function                                     |
+| --------- | -------------------------------------------- |
+| ▶️        | Play/Pause toggle                            |
+| ⏹️        | Stop (reset to beginning)                    |
+| ⏪        | Rewind 10 seconds                            |
+| ⏩        | Forward 10 seconds                           |
+| 🎵        | Select sheet music / Upload MIDI             |
+| 🔊        | Volume control (0-100%) with animated slider |
+| 0.5x - 2x | Playback speed selector                      |
 
 ## 🌐 Deployment
 
 ### Netlify (Recommended)
+
 The project includes Netlify configuration:
 
 ```bash
@@ -179,7 +196,9 @@ netlify deploy --prod --dir=dist
 ```
 
 ### Other Platforms
+
 Build output is in `dist/` - deploy as static site on:
+
 - Vercel
 - GitHub Pages
 - AWS S3
@@ -188,32 +207,44 @@ Build output is in `dist/` - deploy as static site on:
 ## 🎨 Customization
 
 ### Adding New Songs
+
 1. Export MIDI file as JSON using `midiUploader.ts`
 2. Place JSON in `src/data/sheets/`
 3. Add to `sheets` array in `PianoCanvas.vue`
 
 ### Changing Colors
+
 Modify `COLOR_WHEEL` in `src/types/piano.ts`:
+
 ```typescript
 export const COLOR_WHEEL = [
-  "#ffadad", "#ffd6a5", "#fdffb6", 
-  "#caffbf", "#9bf6ff", "#a0c4ff", 
-  "#bdb2ff", "#ffc6ff", "#fffffc"
+  '#ffadad',
+  '#ffd6a5',
+  '#fdffb6',
+  '#caffbf',
+  '#9bf6ff',
+  '#a0c4ff',
+  '#bdb2ff',
+  '#ffc6ff',
+  '#fffffc'
 ];
 ```
 
 ### Audio Settings
+
 Edit `src/services/toneAudio.ts`:
+
 ```typescript
 this.sampler = new Tone.Sampler({
-  attack: 0.16,    // Note attack time
-  release: 1,      // Note decay time
-  volume: -8,      // Master volume (dB)
+  attack: 0.16, // Note attack time
+  release: 1, // Note decay time
+  volume: -8 // Master volume (dB)
   // ... sample URLs
 });
 ```
 
 **Volume Control**: Uses logarithmic scale for natural volume perception:
+
 - Linear input (0-1) → Logarithmic output (-60dB to 0dB)
 - Default: 0.7 (70%) = -18dB
 - Muted: 0 = -∞dB
@@ -245,6 +276,7 @@ this.sampler = new Tone.Sampler({
 ## 🤝 Contributing
 
 Contributions welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit changes (`git commit -m 'Add amazing feature'`)
@@ -271,4 +303,4 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 
 **Made with ❤️ and Vue 3**
 
-*Experience professional piano sound quality with cutting-edge web audio technology.*
+_Experience professional piano sound quality with cutting-edge web audio technology._

@@ -62,7 +62,7 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
     // Create 8-12 electric spark particles
     const count = Math.floor(Math.random() * 5) + 8;
     for (let i = 0; i < count; i++) {
-      const angle = (Math.random() * Math.PI) - Math.PI / 2; // Upward hemisphere
+      const angle = Math.random() * Math.PI - Math.PI / 2; // Upward hemisphere
       const speed = Math.random() * 1.5 + 0.5;
       sparkParticles.value.push({
         x: x + (Math.random() - 0.5) * width,
@@ -80,7 +80,7 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
   };
 
   const updateSmokeParticles = (dt: number) => {
-    smokeParticles.value = smokeParticles.value.filter(p => {
+    smokeParticles.value = smokeParticles.value.filter((p) => {
       p.life += dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -92,13 +92,13 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
   };
 
   const updateSparkParticles = (dt: number) => {
-    sparkParticles.value = sparkParticles.value.filter(p => {
+    sparkParticles.value = sparkParticles.value.filter((p) => {
       p.life += dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.vy += 0.003 * dt; // gravity
       p.vx *= 0.98; // air resistance
-      p.alpha = Math.max(0, 1 - (p.life / p.maxLife));
+      p.alpha = Math.max(0, 1 - p.life / p.maxLife);
       return p.life < p.maxLife;
     });
   };
@@ -106,7 +106,7 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
   const updateKeyGlowEffects = (dt: number) => {
     keyGlowEffects.value.forEach((effect, key) => {
       effect.time += dt;
-      effect.intensity = Math.max(0, 1 - (effect.time / 300)); // Fade over 300ms
+      effect.intensity = Math.max(0, 1 - effect.time / 300); // Fade over 300ms
       if (effect.intensity <= 0) {
         keyGlowEffects.value.delete(key);
       }
@@ -125,7 +125,7 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
     if (!ctx.value || smokeParticles.value.length === 0) return;
 
     ctx.value.save();
-    smokeParticles.value.forEach(p => {
+    smokeParticles.value.forEach((p) => {
       ctx.value!.globalAlpha = p.alpha;
       ctx.value!.fillStyle = p.color;
       ctx.value!.shadowColor = p.color;
@@ -141,7 +141,7 @@ export function useParticleEffects(ctx: Ref<CanvasRenderingContext2D | null>) {
     if (!ctx.value || sparkParticles.value.length === 0) return;
 
     ctx.value.save();
-    sparkParticles.value.forEach(p => {
+    sparkParticles.value.forEach((p) => {
       ctx.value!.globalAlpha = p.alpha;
 
       // Draw bright core

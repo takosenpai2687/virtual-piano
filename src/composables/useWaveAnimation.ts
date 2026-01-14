@@ -37,8 +37,24 @@ export function useWaveAnimation(waveColor: string) {
       // Define 3 wave layers: 1 thick stable base wave + 2 complex composite waves
       const waves = [
         { freq: 0.02, amp: 2, phase: time * 0.5, speed: 0.3, color: waveColor, width: 8, glow: 30 }, // Thick stable base wave
-        { freq: 0.025, amp: 3.5, phase: time * 1.2, speed: 1, color: waveColor, width: 3, glow: 20 }, // Complex wave 1
-        { freq: 0.035, amp: 2.5, phase: time * 0.8, speed: -0.7, color: waveColor, width: 2.5, glow: 25 } // Complex wave 2
+        {
+          freq: 0.025,
+          amp: 3.5,
+          phase: time * 1.2,
+          speed: 1,
+          color: waveColor,
+          width: 3,
+          glow: 20
+        }, // Complex wave 1
+        {
+          freq: 0.035,
+          amp: 2.5,
+          phase: time * 0.8,
+          speed: -0.7,
+          color: waveColor,
+          width: 2.5,
+          glow: 25
+        } // Complex wave 2
       ];
 
       // Draw each wave layer

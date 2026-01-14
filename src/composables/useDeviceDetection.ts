@@ -8,7 +8,7 @@ import isMobileJS from 'ismobilejs';
 export function useDeviceDetection() {
   const canvasWidth = ref(window.innerWidth);
   const canvasHeight = ref(window.innerHeight);
-  
+
   // Device detection
   const isMobile = computed(() => {
     const mobileCheck = isMobileJS({
@@ -16,22 +16,22 @@ export function useDeviceDetection() {
       platform: navigator.platform,
       maxTouchPoints: navigator.maxTouchPoints
     });
-    
+
     const minDimension = Math.min(canvasWidth.value, canvasHeight.value);
-    
+
     // If screen is reasonably large (>=850px in smallest dimension), always treat as desktop
     // This ensures MacBook 14" (1440x900) and similar laptops work correctly
     if (minDimension >= 850) {
       return false;
     }
-    
+
     // For smaller screens, trust ismobilejs detection
     // This correctly identifies phones and tablets while excluding small laptops
     return mobileCheck.any;
   });
 
   const isPortrait = computed(() => canvasHeight.value > canvasWidth.value);
-  
+
   const isLandscape = computed(() => canvasWidth.value >= canvasHeight.value);
 
   const showRotatePrompt = computed(() => {
@@ -74,7 +74,7 @@ export function useDeviceDetection() {
     window.addEventListener('resize', handleResize);
     // Listen to orientationchange event for better mobile support
     window.addEventListener('orientationchange', handleOrientationChange);
-    
+
     // Also listen to screen.orientation.change for modern browsers
     if (window.screen?.orientation) {
       window.screen.orientation.addEventListener('change', handleOrientationChange);
@@ -85,7 +85,7 @@ export function useDeviceDetection() {
   const cleanupListeners = () => {
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleOrientationChange);
-    
+
     if (window.screen?.orientation) {
       window.screen.orientation.removeEventListener('change', handleOrientationChange);
     }

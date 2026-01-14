@@ -118,14 +118,14 @@ export class MidiConverter {
           const metaType = view.getUint8(offset++);
           const { value: length, bytesRead: lengthBytes } = this.readVariableLength(view, offset);
           offset += lengthBytes;
-          
+
           // Store meta event data for tempo extraction
           const metaData = new Uint8Array(length);
           for (let i = 0; i < length; i++) {
             metaData[i] = view.getUint8(offset + i);
           }
           offset += length;
-          
+
           event = { deltaTime, type: 'meta', metaType, metaData } as any;
         } else if (statusByte === 0xf0 || statusByte === 0xf7) {
           // SysEx event
@@ -147,16 +147,22 @@ export class MidiConverter {
   private static convertToMidiNotes(tracks: MidiTrack[], ticksPerBeat: number): MidiNote[] {
     const noteOnEvents = new Map<string, { time: number; key: number; velocity: number }>();
     const midiNotes: MidiNote[] = [];
-    
+
     // Extract tempo from tempo meta events (default to 120 BPM if not found)
     let microsecondsPerBeat = 500000; // Default: 500,000 microseconds per quarter note = 120 BPM
-    
+
     // First pass: find tempo in the first track (usually track 0)
     if (tracks.length > 0) {
       for (const event of tracks[0].events) {
-        if (event.type === 'meta' && event.metaType === 0x51 && event.metaData && event.metaData.length === 3) {
+        if (
+          event.type === 'meta' &&
+          event.metaType === 0x51 &&
+          event.metaData &&
+          event.metaData.length === 3
+        ) {
           // Tempo meta event (0x51): 3 bytes representing microseconds per quarter note
-          microsecondsPerBeat = (event.metaData[0] << 16) | (event.metaData[1] << 8) | event.metaData[2];
+          microsecondsPerBeat =
+            (event.metaData[0] << 16) | (event.metaData[1] << 8) | event.metaData[2];
           break; // Use the first tempo we find
         }
       }
@@ -165,13 +171,13 @@ export class MidiConverter {
     // Calculate time in milliseconds per tick using the tempo
     // microseconds per beat / ticks per beat = microseconds per tick
     // microseconds per tick / 1000 = milliseconds per tick
-    const msPerTick = (microsecondsPerBeat / ticksPerBeat) / 1000;
+    const msPerTick = microsecondsPerBeat / ticksPerBeat / 1000;
 
     // Combine all tracks
     const allEvents: Array<{ event: MidiEvent; track: number }> = [];
     tracks.forEach((track, trackIndex) => {
       let time = 0;
-      track.events.forEach(event => {
+      track.events.forEach((event) => {
         time += event.deltaTime;
         allEvents.push({ event: { ...event, deltaTime: time }, track: trackIndex });
       });
@@ -184,7 +190,11 @@ export class MidiConverter {
     allEvents.forEach(({ event }) => {
       const timeMs = Math.round(event.deltaTime * msPerTick);
 
-      if (event.type === 'noteOn' && event.noteNumber !== undefined && event.velocity !== undefined) {
+      if (
+        event.type === 'noteOn' &&
+        event.noteNumber !== undefined &&
+        event.velocity !== undefined
+      ) {
         const key = `${event.noteNumber}-${event.channel}`;
         noteOnEvents.set(key, {
           time: timeMs,
@@ -194,7 +204,7 @@ export class MidiConverter {
       } else if (event.type === 'noteOff' && event.noteNumber !== undefined) {
         const key = `${event.noteNumber}-${event.channel}`;
         const noteOn = noteOnEvents.get(key);
-        
+
         if (noteOn) {
           const duration = timeMs - noteOn.time;
           if (duration > 0) {
@@ -222,7 +232,10 @@ export class MidiConverter {
     return result;
   }
 
-  private static readVariableLength(view: DataView, offset: number): { value: number; bytesRead: number } {
+  private static readVariableLength(
+    view: DataView,
+    offset: number
+  ): { value: number; bytesRead: number } {
     let value = 0;
     let bytesRead = 0;
     let byte: number;

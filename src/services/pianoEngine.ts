@@ -21,12 +21,12 @@ export class PianoEngine {
   private blackKeyWidth = 0;
   private whiteKeyHeight = 0;
   private blackKeyHeight = 0;
-  
+
   constructor() {}
 
   async initSounds(): Promise<void> {
     if (this.audioLoaded) return;
-    
+
     try {
       await toneAudio.init();
       this.audioLoaded = true;
@@ -59,8 +59,8 @@ export class PianoEngine {
 
   removeCurrentKey(midiKey: number): void {
     const wasPressed = this.currentMidiKeys.includes(midiKey);
-    this.currentMidiKeys = this.currentMidiKeys.filter(k => k !== midiKey);
-    
+    this.currentMidiKeys = this.currentMidiKeys.filter((k) => k !== midiKey);
+
     // Release the note in Tone.js when key is removed
     if (wasPressed) {
       toneAudio.releaseNote(midiKey);
@@ -69,7 +69,7 @@ export class PianoEngine {
 
   removeCurrentKeyVisual(midiKey: number): void {
     // Remove from visual tracking only, without releasing audio
-    this.currentMidiKeys = this.currentMidiKeys.filter(k => k !== midiKey);
+    this.currentMidiKeys = this.currentMidiKeys.filter((k) => k !== midiKey);
   }
 
   getCurrentKeys(): number[] {
@@ -78,7 +78,7 @@ export class PianoEngine {
 
   clearCurrentKeys(): void {
     // Release all currently pressed keys
-    this.currentMidiKeys.forEach(key => toneAudio.releaseNote(key));
+    this.currentMidiKeys.forEach((key) => toneAudio.releaseNote(key));
     this.currentMidiKeys = [];
   }
 
@@ -90,30 +90,30 @@ export class PianoEngine {
   preprocessMidiNotes(notes: MidiNote[]): MidiNote[] {
     let maxVel = 0;
     let minVel = 127;
-    
-    notes.forEach(n => {
+
+    notes.forEach((n) => {
       if (n.Vel < minVel) minVel = n.Vel;
       if (n.Vel > maxVel) maxVel = n.Vel;
     });
 
-    return notes.map(note => ({
+    return notes.map((note) => ({
       ...note,
       Vel: MIN_VEL + ((note.Vel - minVel) / (maxVel - minVel)) * (MAX_VEL - MIN_VEL)
     }));
   }
 
   createBubbles(notes: MidiNote[], keyboardRects: KeyboardRect[]): Bubble[] {
-    const validNotes = notes.filter(n => n.Key >= 36 && n.Key <= 96);
+    const validNotes = notes.filter((n) => n.Key >= 36 && n.Key <= 96);
     const whiteKeyWidth = keyboardRects[0]?.width || 0;
-    const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
-    
-    const bubbles: Bubble[] = validNotes.map(midi => {
+    const blackKeyWidth = keyboardRects.find((r) => r.isBlack)?.width || 0;
+
+    const bubbles: Bubble[] = validNotes.map((midi) => {
       const keyboardRect = keyboardRects[midi.Key - 36];
       const width = whiteKeyWidth - blackKeyWidth;
       const height = midi.DurationMs;
       const x = keyboardRect.x + keyboardRect.width / 2 - width / 2;
       const y = -(midi.TimeMs + midi.DurationMs);
-      
+
       return {
         x,
         y,
@@ -129,11 +129,11 @@ export class PianoEngine {
 
   updateBubbles(bubbles: Bubble[], keyboardRects: KeyboardRect[], dt: number): Bubble[] {
     const whiteKeyWidth = keyboardRects[0]?.width || 0;
-    const blackKeyWidth = keyboardRects.find(r => r.isBlack)?.width || 0;
+    const blackKeyWidth = keyboardRects.find((r) => r.isBlack)?.width || 0;
     const maxY = this.cvHeight - this.whiteKeyHeight;
 
     return bubbles
-      .map(b => {
+      .map((b) => {
         const keyboardRect = keyboardRects[b.keyboardRectIndex];
         return {
           ...b,
@@ -142,7 +142,7 @@ export class PianoEngine {
           y: b.y + dt
         };
       })
-      .filter(b => b.y < maxY);
+      .filter((b) => b.y < maxY);
   }
 
   setDimensions(width: number, height: number): void {
@@ -156,7 +156,7 @@ export class PianoEngine {
 
   createKeyboardRects(): KeyboardRect[] {
     const keyboardRects: KeyboardRect[] = [];
-    
+
     // Add White Keys
     for (let i = 0; i < N_WHITE_KEYS; i++) {
       keyboardRects.push({
@@ -179,7 +179,7 @@ export class PianoEngine {
     for (let i = 0; i < 5; i++) {
       const offsetX = (i * 7 + 1) * this.whiteKeyWidth - this.blackKeyWidth / 2;
       const bKeysTmp: KeyboardRect[] = [];
-      
+
       for (let j = 0; j < 5; j++) {
         bKeysTmp.push({
           index: 0,
@@ -196,13 +196,13 @@ export class PianoEngine {
           text: null
         });
       }
-      
+
       bKeysTmp[0].x = offsetX; // C#
       bKeysTmp[1].x = offsetX + this.whiteKeyWidth; // D#
       bKeysTmp[2].x = offsetX + 3 * this.whiteKeyWidth; // F#
       bKeysTmp[3].x = offsetX + 4 * this.whiteKeyWidth; // G#
       bKeysTmp[4].x = offsetX + 5 * this.whiteKeyWidth; // A#
-      
+
       keyboardRects.push(...bKeysTmp);
     }
 
@@ -226,7 +226,7 @@ export class PianoEngine {
     } else if (wkIndex === 35) {
       keysToCheck = [60];
     } else {
-      const realIndex = keyboardRects.findIndex(e => e.wkIndex === wkIndex);
+      const realIndex = keyboardRects.findIndex((e) => e.wkIndex === wkIndex);
       if (realIndex >= 0) {
         keysToCheck = [realIndex, realIndex - 1, realIndex + 1];
       }
@@ -244,16 +244,14 @@ export class PianoEngine {
     const lowerKey = key.toLowerCase();
     if (!Object.values(noteToKeyboard).includes(lowerKey)) return null;
 
-    const rawNote = Object.keys(noteToKeyboard).find(
-      k => noteToKeyboard[k] === lowerKey
-    );
+    const rawNote = Object.keys(noteToKeyboard).find((k) => noteToKeyboard[k] === lowerKey);
     if (!rawNote) return null;
 
     const note = shiftKey ? `${rawNote}#` : rawNote;
     const midiKey = Number(
-      Object.keys(midiKeyToNote).find(k => midiKeyToNote[Number(k)] === note)
+      Object.keys(midiKeyToNote).find((k) => midiKeyToNote[Number(k)] === note)
     );
-    
+
     return isNaN(midiKey) ? null : midiKey;
   }
 
